@@ -6,8 +6,9 @@
 
 本章通过系统的数值实验验证所提算法的正确性和有效性。
 所有实验在 Python 3.x + NumPy + SciPy 环境下完成，
-测试问题为矩形区域 $\Omega = [0,1]^2$ 上的 Helmholtz 方程
-$(-\nabla^2 + k^2)u = f$。
+测试问题为矩形区域 $\Omega = [0,1]^2$ 上的统一框架方程
+$(-\nabla^2 + \sigma)u = f$。
+除特别说明外，默认实验采用 modified Helmholtz 参数 $\sigma = +k^2$（$k^2 > 0$）。
 
 \subsection{测试问题}
 
@@ -137,18 +138,19 @@ FFT9 基于九点紧致差分格式，精度远高于其余三种方法。
 
 \subsubsection{不同波数下的收敛性}
 
-固定网格 $n = 33$，取 $k^2 = 0, 1, 10, 100, 1000$，
+固定网格 $n = 33$，取 $\kappa^2 = 0, 1, 10, 100, 1000$（modified Helmholtz，$\sigma=+\kappa^2$），
 观察 GMRES(30) 的收敛曲线，结果如图~\ref{fig:gmres_convergence} 左图所示。
 
-随着波数 $k$ 的增大，GMRES 的收敛速度呈现以下规律：
+随着波数参数 $\kappa^2$ 的增大，GMRES 的收敛速度呈现以下规律：
 \begin{itemize}
-  \item $k^2 = 0$（Poisson 方程）和较小的 $k^2$：收敛最慢，需要最多的迭代次数；
-  \item $k^2 = 100, 1000$：收敛明显加快，迭代次数显著减少。
+  \item $\kappa^2 = 0$（Poisson 方程）和较小的 $\kappa^2$：收敛最慢，需要最多的迭代次数；
+  \item $\kappa^2 = 100, 1000$：收敛明显加快，迭代次数显著减少。
 \end{itemize}
 
-这是因为较大的 $k^2$ 使得矩阵 $A = -\nabla^2 + k^2 I$ 更加对角占优，
-条件数改善（$\kappa(A) = (\lambda_{\max} + k^2)/(\lambda_{\min} + k^2) \to 1$），
+这是因为 modified Helmholtz 方程中，较大的 $\kappa^2$ 使得矩阵 $A = -\nabla^2 + \kappa^2 I$ 更加对角占优，
+条件数改善（$\kappa(A) = (\lambda_{\max} + \kappa^2)/(\lambda_{\min} + \kappa^2) \to 1$），
 Krylov 子空间方法更容易逼近解。
+这是 modified Helmholtz 方程的特有行为，不应推广到 true Helmholtz 方程。
 
 \subsubsection{不同网格下的收敛性}
 
@@ -255,7 +257,7 @@ $n$ & FA & CR & FACR & FFT9 & GMRES(30) \\
   \item \textbf{规模增长}：GMRES 的计算时间增长速度远快于 FFT 直接法。
         从 $n=33$ 到 $n=257$，FA 的时间增长约 12 倍（符合 $O(N^2 \log N)$），
         而 GMRES 的时间增长约 2300 倍，体现了迭代法在大规模问题上的固有劣势。
-        FACR 在中等规模问题上表现最优，体现了其 $O(N^2 \log\log N)$ 的理论优势。
+        FACR 在中等规模问题上表现最优，体现了其混合策略的效率优势。
 \end{enumerate}
 
 图~\ref{fig:efficiency} 直观展示了直接法与迭代法在时间和精度上的对比。
@@ -296,10 +298,11 @@ $k^2$ & $n = 33$ & $n = 65$ & $n = 129$ \\
 
 对于所有测试的波数值，FA 直接求解器均保持了二阶收敛精度，
 且精度随着波数增大反而略有提高。
-这是因为当 $k^2$ 较大时，离散 Helmholtz 算子的特征值 $\lambda_{p,q} + k^2$
-远离零点，算子的条件数反而改善，不会出现共振问题。
-这体现了 FFT 直接法的一个重要优势：只要离散算子非奇异（不触及共振频率），
-求解精度与波数无关。
+这是因为当 $k^2$ 较大时（modified Helmholtz，$\sigma=+\kappa^2$），
+频域分母 $\lambda_{p,q} + \kappa^2$ 远离零点，条件数反而改善，
+不会出现共振问题（共振仅在 true Helmholtz，$\sigma=-\kappa^2$ 时出现）。
+这体现了 FFT 直接法在 modified Helmholtz 方程下的一个重要优势：
+频域分母恒正，求解精度与波数无关。
 
 \subsubsection{GMRES 迭代次数}
 
@@ -324,14 +327,17 @@ $k^2$ & $n = 33$ & $n = 65$ & $n = 129$ \\
 \end{tabular}
 \end{table}
 
-与直接法不同，GMRES 的迭代次数随波数呈现有趣的规律：
-当 $k^2$ 较小时，Helmholtz 矩阵 $A = -\nabla_h^2 + k^2 I$ 的条件数较大，
-GMRES 需要较多迭代；当 $k^2$ 增大时，对角占优程度增强，条件数改善，迭代次数反而减少。
-具体而言，$k^2 = 0$（Poisson 方程）时条件数最大，$n=129$ 需要 2875 次迭代；
-而 $k^2 = 1000$ 时仅需 158 次迭代，减少了约 18 倍。
+与直接法不同，GMRES 的迭代次数随波数参数呈现有趣的规律：
+当 $\kappa^2$ 较小时，modified Helmholtz 矩阵 $A = -\nabla_h^2 + \kappa^2 I$ 的条件数较大，
+GMRES 需要较多迭代；当 $\kappa^2$ 增大时，对角占优程度增强，条件数改善，迭代次数反而减少。
+具体而言，$\kappa^2 = 0$（Poisson 方程）时条件数最大，$n=129$ 需要 2875 次迭代；
+而 $\kappa^2 = 1000$ 时仅需 158 次迭代，减少了约 18 倍。
 
-这体现了 Helmholtz 方程中大波数问题的双重性：
-虽然条件数改善有利于迭代法收敛，但高频解的离散化精度仍需要更密的网格
+这体现了 modified Helmholtz 方程的特殊性质：
+条件数随 $\kappa^2$ 改善，迭代法收敛加速。
+对于 true Helmholtz 方程（$\sigma=-\kappa^2$），行为截然相反——
+近共振时迭代次数急剧增加（见第\ref{sec:helmholtz}章分析）。
+此外，高频解的离散化精度仍需要更密的网格
 （每个波长需足够采样点），否则会出现数值频散（pollution effect）。
 
 图~\ref{fig:wavenumber} 展示了不同波数下 GMRES 的收敛曲线对比。
@@ -505,7 +511,7 @@ GMRES 在 Neumann 边界条件下的收敛阶为 $2.00$，
 \begin{itemize}[itemsep=2pt]
   \item 当 $k^2 = 0$（Poisson 方程）时，条件数严格遵循 $O(h^{-2})$ 增长；
   \item 当 $k^2 > 0$ 时，条件数仍以 $O(h^{-2})$ 增长，但常数因子更小；
-  \item 当 $k^2$ 较大时，$\lambda_{\min} \approx k^2 > 0$，
+  \item 当 $k^2$ 较大时，$\lambda_{\min} \approx k^2 > 0$（modified Helmholtz，$\sigma=+\kappa^2$），
         条件数在粗网格上反而较小，这与实验五中 FA 精度随 $k^2$ 增大而提高的现象一致。
 \end{itemize}
 

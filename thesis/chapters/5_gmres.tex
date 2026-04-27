@@ -148,13 +148,25 @@ $r = \sqrt{(h_{j,j}^{(j-1)})^2 + (h_{j+1,j}^{(j-1)})^2}$，
     \leq \left(1 - \frac{\lambda_{\min}^2}{\lambda_{\max} \|A\|^2}\right)^{m/2}
     \label{eq:gmres_bound}
   \end{equation}
-  对于五点差分 Helmholtz 矩阵，$\|A\| \approx 8/h^2 + k^2$，
-  $\lambda_{\min} \approx k^2$（当 $k^2 > 0$ 时），
-  因此收敛率近似为：
-  \begin{equation}
-    \rho \approx 1 - \frac{k^4}{(8/h^2 + k^2)^2}
-  \end{equation}
-  当 $k^2$ 较小或 $h$ 较小时，$\rho \to 1$，收敛速度急剧下降。
+  对于五点差分格式下的各类方程，$\lambda_{\min}$ 和 $\lambda_{\max}$
+  指 $A+A^T$ 的最小和最大特征值。对于 SPD 矩阵，即为 $A$ 本身的特征值。
+  \begin{itemize}[itemsep=2pt]
+    \item \textbf{Poisson}（$\sigma=0$，Dirichlet BC）：
+          $\lambda_{\min} \approx 2\pi^2$，$\|A\| \approx 8/h^2$，
+          $\rho \approx 1 - O(h^4)$，收敛慢；
+    \item \textbf{Modified Helmholtz}（$\sigma=+\kappa^2$，Dirichlet BC）：
+          $\lambda_{\min} \approx 2\pi^2+\kappa^2$，$\|A\| \approx 8/h^2+\kappa^2$，
+          $\kappa^2$ 的加入使 $\lambda_{\min}$ 增大，条件数改善，收敛通常加快；
+    \item \textbf{Modified Helmholtz}（$\sigma=+\kappa^2$，Neumann BC）：
+          $\lambda_{\min} \approx \kappa^2$（零模式 $d_{0,0}=\kappa^2$），
+          条件数 $\kappa(A) \approx (8/h^2+\kappa^2)/\kappa^2 = O(1/(h^2\kappa^2))$，
+          当 $\kappa^2 \gg 1$ 时远优于 Poisson 的 $O(h^{-2})$；
+    \item \textbf{True Helmholtz}（$\sigma=-\kappa^2$）：矩阵不定，
+          上述正定收敛界不适用。
+          需使用 GMRES 的多项式逼近分析：
+          特征值分布在正负两侧，
+          收敛速度取决于复平面上的谱包络。
+  \end{itemize}
 \end{theorem}
 
 \subsection{重启策略}
@@ -174,7 +186,8 @@ $r = \sqrt{(h_{j,j}^{(j-1)})^2 + (h_{j+1,j}^{(j-1)})^2}$，
   重启丢失了之前所有 Krylov 基向量信息，
   新的 Krylov 子空间可能只包含有限的谱信息。
   对于高度不定的问题，GMRES($m$) 可能需要极多的重启轮次，
-  这是本文实验中 $n=129$ 时 GMRES(30) 需要 161290 次迭代的根本原因。
+  这是本文实验中 $n=129$ 时 GMRES(30) 需要大量迭代的根本原因，
+  尤其对于 true Helmholtz 方程（$\sigma=-\kappa^2$）。
 \end{remark}
 
 \subsection{2D Helmholtz 稀疏矩阵构造}
@@ -194,8 +207,8 @@ $r = \sqrt{(h_{j,j}^{(j-1)})^2 + (h_{j+1,j}^{(j-1)})^2}$，
 
 具体地，对 $n$ 个节点（含边界），矩阵 $A \in \mathbb{R}^{n^2 \times n^2}$ 中：
 \begin{itemize}[itemsep=2pt]
-  \item 角点 $(0,0)$：对角元 $4/h^2 + k^2$，邻点 $-2/h^2$（两个方向）
-  \item 边点 $(0,j)$（非角点）：对角元 $4/h^2 + k^2$，法向邻点 $-2/h^2$，切向邻点 $-1/h^2$
+  \item 角点 $(0,0)$：对角元 $4/h^2 + \sigma$，邻点 $-2/h^2$（两个方向）
+  \item 边点 $(0,j)$（非角点）：对角元 $4/h^2 + \sigma$，法向邻点 $-2/h^2$，切向邻点 $-1/h^2$
   \item 内点 $(i,j)$：与 Dirichlet 相同
 \end{itemize}
 
@@ -203,12 +216,12 @@ GMRES 作为非对称求解器，可以自然处理此类非对称系统。
 
 \subsection{预处理策略}
 
-对于大波数 $k$，Helmholtz 矩阵的条件数急剧增大，
-GMRES 的收敛速度显著下降。常用的预处理策略包括：
+对于 true Helmholtz 方程（$\sigma=-\kappa^2$），大波数 $\kappa$ 导致
+离散矩阵不定且条件数增大，GMRES 的收敛速度显著下降。常用的预处理策略包括：
 
 \subsubsection{Shifted Laplacian 预处理}
 
-以 $-\nabla^2 + (k^2 - i\eta)$ 的算子作为预处理矩阵 $M$，
+以 $-\nabla^2 + (-\kappa^2 - i\eta)$ 的算子作为预处理矩阵 $M$，
 其中 $\eta$ 为复数移位参数。预处理系统为 $M^{-1}A\mathbf{x} = M^{-1}\mathbf{b}$。
 
 \textbf{原理}：$M$ 的谱性质接近 $A$（仅差虚数移位 $i\eta$），

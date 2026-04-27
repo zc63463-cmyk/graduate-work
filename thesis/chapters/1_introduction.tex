@@ -7,11 +7,22 @@
 
 椭圆型偏微分方程是数学物理中最重要的方程类型之一，
 广泛应用于流体力学、电磁场计算、声学传播、热传导等领域。
-其中 Poisson 方程 $-\nabla^2 u = f$ 和 Helmholtz 方程
-$(-\nabla^2 + k^2)u = f$ 是两类最基本、最典型的椭圆型方程。
-Poisson 方程描述了稳态热传导、静电势等物理过程，
-而 Helmholtz 方程则是时间简谐波问题的频域形式，
-在声学散射、地震波传播和量子力学中有重要应用~\cite{ShaoWenting2017, LiuJiayuan2019, LiSiqing2020}。
+本文在统一框架下研究三类椭圆型方程：
+\begin{equation}
+  (-\nabla^2 + \sigma)u = f, \quad (x,y) \in \Omega
+  \label{eq:unified_pde_intro}
+\end{equation}
+其中参数 $\sigma$ 的取值决定方程类型：
+\begin{itemize}[itemsep=2pt]
+  \item $\sigma = 0$：Poisson 方程 $-\nabla^2 u = f$，描述稳态热传导、静电势等物理过程；
+  \item $\sigma = +\kappa^2$（$\kappa > 0$）：modified Helmholtz 方程（screened Poisson 方程），
+        矩阵保持对称正定，条件数随 $\kappa^2$ 增大而改善；
+  \item $\sigma = -\kappa^2$：true Helmholtz 方程（时谐波动方程的频域形式），
+        矩阵不定，当特征值 $\lambda_{p,q}=\kappa^2$ 时出现共振。
+\end{itemize}
+Poisson 方程与 modified Helmholtz 方程的离散矩阵均为对称正定，
+适用 CG 等基于正定性的迭代法；true Helmholtz 方程的离散矩阵不定，
+需要 GMRES 或 MINRES 等更一般的 Krylov 方法~\cite{ShaoWenting2017, LiuJiayuan2019, LiSiqing2020}。
 
 数值求解椭圆型方程的方法大致分为两类：
 \textbf{直接法}和\textbf{迭代法}~\cite{MinTao2017}。
@@ -24,7 +35,8 @@ Poisson 方程描述了稳态热传导、静电势等物理过程，
 利用离散正弦变换（DST）或离散余弦变换（DCT）的对角化性质，
 可以将 $N^2$ 个耦合的差分方程转化为 $N^2$ 个独立的代数方程，
 总计算量仅为 $O(N^2 \log N)$，远优于一般稀疏矩阵直接分解的 $O(N^3)$。
-循环约化（CR）和 FACR 混合算法更可将复杂度降至 $O(N^2 \log\log N)$。
+循环约化（CR）和 FACR 混合算法可进一步降低常数因子，
+实际实现的复杂度为 $O(N^2 \log N)$。
 
 然而，FFT 直接法的适用范围受限于区域形状和方程系数的可分离性。
 对于非规则区域或变系数问题，迭代法（如 GMRES）更具灵活性，
@@ -56,13 +68,16 @@ Houstis 和 Papatheodorou \cite{HoustisPapatheodorou1979a, HoustisPapatheodorou1
 
 \subsubsection{Helmholtz 方程求解}
 
-Helmholtz 方程的数值求解面临两个主要挑战：
-大波数 $k$ 导致离散矩阵条件数急剧增大，
-以及共振波数下的解不唯一性。
-Bayliss 等 \cite{Bayliss1983} 研究了迭代法求解 Helmholtz 方程的困难，
-Ernst 和 Gander \cite{Ernst2011} 系统分析了经典迭代法求解 Helmholtz
-方程的收敛性障碍。
-Ihlenburg \cite{Ihlenburg1998} 对有限元方法求解 Helmholtz 方程
+Helmholtz 方程的数值求解需区分两种类型。
+对于 modified Helmholtz 方程 $(-\nabla^2+\kappa^2)u=f$，
+离散矩阵对称正定，频域分母 $\lambda_{p,q}+\kappa^2 > 0$ 恒成立，
+条件数随 $\kappa^2$ 增大而改善，迭代法通常加速收敛。
+对于 true Helmholtz 方程 $(-\nabla^2-\kappa^2)u=f$，
+离散矩阵不定，当某特征值 $\lambda_{p,q}\approx\kappa^2$ 时频域分母接近零，
+导致共振现象和数值困难~\cite{Bayliss1983, Ernst2011}。
+Ernst 和 Gander~\cite{Ernst2011}系统分析了经典迭代法求解 true Helmholtz
+方程的收敛性障碍，指出 shifted-Laplacian 预处理是缓解困难的主要手段。
+Ihlenburg~\cite{Ihlenburg1998}对有限元方法求解 true Helmholtz 方程
 进行了系统的误差分析。
 国内方面，刘镓源\cite{LiuJiayuan2019}研究了两类 Helmholtz 问题的差分法，
 姚登明\cite{YaoDengming2018}对带 PML 边界条件的 Helmholtz 方程
@@ -83,14 +98,14 @@ Saad \cite{Saad2003} 对 Krylov 子空间方法做了系统总结。
 本文的主要工作和创新点如下：
 
 \begin{enumerate}[itemsep=2pt]
-  \item 系统实现了基于 FFT 的五种快速直接求解器（FA、CR、FACR、FFT9、5点基准），
-        支持 Dirichlet、Neumann 和混合边界条件；
-  \item 对 Neumann 边界条件，采用 ghost-point 方法配合对称化 DCT-I 变换，
-        解决了非对称 Laplacian 矩阵的对角化问题；
+  \item 在统一的 $(-\nabla^2+\sigma)u=f$ 框架下，系统实现了基于 FFT 的五种快速直接求解器
+        （FA、CR、FACR、FFT9、5点基准），支持 Dirichlet、Neumann 和混合边界条件，
+        并明确区分 modified Helmholtz（$\sigma=+\kappa^2$，正定）与 true Helmholtz（$\sigma=-\kappa^2$，不定）；
+  \item 对 Neumann 边界条件，采用 ghost-point 方法配合对称化 DCT-I 变换，解决了非对称 Laplacian 矩阵的对角化问题；
   \item 实现了基于 Givens 旋转的 GMRES 迭代法，构造了 2D Helmholtz 稀疏矩阵，
-        与 FFT 直接法进行了系统对比；
-  \item 通过特征值分析证明了六阶紧致差分格式不存在常数修正因子，
-        为四阶格式是最优选择提供了理论依据。
+        与 FFT 直接法进行了系统对比，并分析了 modified/true Helmholtz 方程下迭代行为的本质差异；
+  \item 通过 Fourier 特征值分析证明了三参数九点修正族的六阶不可行性，
+        为四阶紧致格式是最优选择提供了理论依据，并利用 Lean 4 进行了辅助形式化校验。
 \end{enumerate}
 
 本文结构安排如下：

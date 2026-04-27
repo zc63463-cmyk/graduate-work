@@ -79,21 +79,26 @@
 \maketitle
 
 \begin{abstract}
-本文研究矩形区域上 Poisson 方程和 Helmholtz 方程 $(-\nabla^2 + k^2)u = f$ 的快速数值求解方法。
+本文在统一的 $(-\nabla^2 + \sigma)u = f$ 框架下，
+研究矩形区域上 Poisson 方程（$\sigma=0$）、modified Helmholtz 方程（$\sigma=+\kappa^2$）
+与 true Helmholtz 方程（$\sigma=-\kappa^2$）的快速数值求解方法。
 首先基于五点差分格式（二阶精度）和九点紧致差分格式（四阶精度）对方程进行离散，
 然后利用离散 Fourier 变换（DST/DCT）的对角化性质，实现了 Fourier Analysis (FA)、
 Cyclic Reduction (CR) 和 FACR 混合算法等基于 FFT 的快速直接求解器，
-其时间复杂度分别为 $O(N^2 \log N)$ 和 $O(N^2 \log\log N)$。
-对于 Helmholtz 方程，通过 $k^2$ 修正将 Poisson 求解器自然推广；
+时间复杂度为 $O(N^2 \log N)$。
+对于 Helmholtz 方程，通过频域分母 $d_{p,q}=\lambda_{p,q}+\sigma$ 统一推广；
+modified Helmholtz 矩阵保持正定，条件数随 $\kappa^2$ 增大而改善；
+true Helmholtz 矩阵不定，存在共振风险。
 对于 Neumann 边界条件，采用 ghost-point 方法配合对称化 DCT-I 变换实现高效求解。
 同时，本文实现了基于 Givens 旋转的 GMRES 迭代法，
 并在相同测试问题下与 FFT 直接法进行了系统的精度、效率和收敛性对比。
 数值实验表明：FFT 直接法在规则区域上具有效率优势，
-GMRES 迭代法则在可扩展性和预处理适应性方面更具潜力。
+GMRES 迭代法则在可扩展性和预处理适应性方面更具潜力，
+且两类方法在 modified 与 true Helmholtz 方程上呈现本质差异。
 
 \vspace{1em}
-\noindent\textbf{关键词：}Poisson 方程；Helmholtz 方程；快速 Fourier 变换；
-有限差分法；GMRES；循环约化；紧致差分格式；Neumann 边界条件
+\noindent\textbf{关键词：}Poisson 方程；modified Helmholtz 方程；true Helmholtz 方程；
+快速 Fourier 变换；有限差分法；GMRES；循环约化；紧致差分格式；Neumann 边界条件
 \end{abstract}
 
 \newpage

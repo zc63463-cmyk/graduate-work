@@ -210,11 +210,14 @@ def gmres(A, b, x0=None, tol=1e-6, max_iter=100, restart=30,
 # 2D Helmholtz Sparse Matrix Construction
 # ============================================================================
 
-def build_helmholtz_matrix(n, k2=0.0, bc_type='dirichlet', sx=1.0, sy=1.0):
+def build_helmholtz_matrix(n, k2=None, bc_type='dirichlet', sx=1.0, sy=1.0, sigma=None):
     """
     Build 2D Helmholtz operator sparse matrix for 5-point finite difference.
 
-    Equation: (-nabla^2 + k^2)u = f  on [0, sx] x [0, sy]
+    Equation: (-nabla^2 + sigma)u = f  on [0, sx] x [0, sy]
+
+    Use sigma for the unified framework, or k2 for backward compatibility
+    (k2 implies sigma = +k^2, i.e., modified Helmholtz).
 
     Ghost-point Neumann BC:
         At x-boundary (i=0): u_{-1,j} = u_{1,j}  =>  neighbor coeff = -2/h^2
@@ -226,7 +229,9 @@ def build_helmholtz_matrix(n, k2=0.0, bc_type='dirichlet', sx=1.0, sy=1.0):
     n : int
         Grid size (n x n nodes including boundaries)
     k2 : float
-        Wavenumber squared (k^2=0 gives Poisson)
+        Wavenumber squared (backward compat, implies sigma=+k^2)
+    sigma : float, optional
+        Unified Helmholtz parameter. If provided, takes precedence over k2.
     bc_type : str or tuple
         'dirichlet', 'neumann', or ('D'/'N', 'D'/'N')
     sx, sy : float
@@ -253,6 +258,14 @@ def build_helmholtz_matrix(n, k2=0.0, bc_type='dirichlet', sx=1.0, sy=1.0):
     else:
         raise TypeError(f"bc_type must be str or tuple, got {type(bc_type)}")
 
+    # Resolve sigma parameter
+    if sigma is not None:
+        sigma_val = sigma
+    elif k2 is not None:
+        sigma_val = k2
+    else:
+        sigma_val = 0.0
+
     h = sx / (n - 1)
     h2 = h * h
 
@@ -267,10 +280,10 @@ def build_helmholtz_matrix(n, k2=0.0, bc_type='dirichlet', sx=1.0, sy=1.0):
         for j in range(Ny):
             idx = i * Ny + j
 
-            # Main diagonal: always 4/h^2 + k^2
+            # Main diagonal: always 4/h^2 + sigma
             rows.append(idx)
             cols.append(idx)
-            vals.append(4.0 / h2 + k2)
+            vals.append(4.0 / h2 + sigma_val)
 
             # x-direction: left neighbor (i-1)
             if bc_x == 'D':
@@ -388,10 +401,10 @@ def _build_rhs(n, f_func, bc_func, k2, bc_x, bc_y, sx=1.0, sy=1.0):
         bc_b = _eval_bc(bc_func, x_node, y_node[0], n)
         bc_t = _eval_bc(bc_func, x_node, y_node[-1], n)
 
-        F[0, :] -= bc_l[1:-1] / h2
-        F[-1, :] -= bc_r[1:-1] / h2
-        F[:, 0] -= bc_b[1:-1] / h2
-        F[:, -1] -= bc_t[1:-1] / h2
+        F[0, :] += bc_l[1:-1] / h2
+        F[-1, :] += bc_r[1:-1] / h2
+        F[:, 0] += bc_b[1:-1] / h2
+        F[:, -1] += bc_t[1:-1] / h2
 
     elif bc_x == 'N' and bc_y == 'N':
         # Pure Neumann
@@ -405,8 +418,8 @@ def _build_rhs(n, f_func, bc_func, k2, bc_x, bc_y, sx=1.0, sy=1.0):
 
         bc_b = _eval_bc(bc_func, x_node, y_node[0], n)
         bc_t = _eval_bc(bc_func, x_node, y_node[-1], n)
-        F[:, 0] -= bc_b / h2
-        F[:, -1] -= bc_t / h2
+        F[:, 0] += bc_b / h2
+        F[:, -1] += bc_t / h2
 
     elif bc_x == 'D' and bc_y == 'N':
         # Mixed: x=Dirichlet, y=Neumann
@@ -415,8 +428,8 @@ def _build_rhs(n, f_func, bc_func, k2, bc_x, bc_y, sx=1.0, sy=1.0):
 
         bc_l = _eval_bc(bc_func, x_node[0], y_node, n)
         bc_r = _eval_bc(bc_func, x_node[-1], y_node, n)
-        F[0, :] -= bc_l / h2
-        F[-1, :] -= bc_r / h2
+        F[0, :] += bc_l / h2
+        F[-1, :] += bc_r / h2
     else:
         raise ValueError(f"Unexpected BC: ({bc_x}, {bc_y})")
 
@@ -504,11 +517,13 @@ def _assemble_solution(u_vec, info, bc_func, sx=1.0, sy=1.0):
 # GMRES Helmholtz Solver
 # ============================================================================
 
-def gmres_helmholtz(n, f_func, bc_func, k2=0.0, bc_type='dirichlet',
+def gmres_helmholtz(n, f_func, bc_func, k2=None, bc_type='dirichlet',
                      sx=1.0, sy=1.0, tol=1e-10, max_iter=None,
-                     restart=30, return_history=False):
+                     restart=30, return_history=False, sigma=None):
     """
     Solve 2D Helmholtz equation using GMRES iterative method.
+
+    Equation: (-nabla^2 + sigma) u = f
 
     Parameters
     ----------
@@ -518,8 +533,10 @@ def gmres_helmholtz(n, f_func, bc_func, k2=0.0, bc_type='dirichlet',
         RHS function f(x, y)
     bc_func : callable
         Boundary condition function
-    k2 : float
-        Wavenumber squared
+    k2 : float, optional
+        Wavenumber squared (backward compat, implies sigma=+k^2)
+    sigma : float, optional
+        Unified Helmholtz parameter. Takes precedence over k2.
     bc_type : str or tuple
         'dirichlet', 'neumann', or ('D'/'N', 'D'/'N')
     sx, sy : float
@@ -540,12 +557,20 @@ def gmres_helmholtz(n, f_func, bc_func, k2=0.0, bc_type='dirichlet',
     info : dict
         Solver information (iterations, residuals, etc.)
     """
+    # Resolve sigma
+    if sigma is not None:
+        sigma_val = sigma
+    elif k2 is not None:
+        sigma_val = k2
+    else:
+        sigma_val = 0.0
+
     # Build sparse matrix and grid info
-    A, grid_info = build_helmholtz_matrix(n, k2, bc_type, sx, sy)
+    A, grid_info = build_helmholtz_matrix(n, sigma=sigma_val, bc_type=bc_type, sx=sx, sy=sy)
 
     # Build RHS
     bc_x, bc_y = grid_info['bc_x'], grid_info['bc_y']
-    b = _build_rhs(n, f_func, bc_func, k2, bc_x, bc_y, sx, sy)
+    b = _build_rhs(n, f_func, bc_func, sigma_val, bc_x, bc_y, sx, sy)
 
     N = A.shape[0]
     if max_iter is None:
