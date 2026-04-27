@@ -1,0 +1,77 @@
+% ============================================================
+% 第四章 Helmholtz 方程的 FFT 求解
+% ============================================================
+\section{Helmholtz 方程的 FFT 求解}
+\label{sec:helmholtz}
+
+\subsection{离散 Helmholtz 方程}
+
+Helmholtz 方程 $(-\nabla^2 + k^2)u = f$ 的五点差分离散为：
+\begin{equation}
+  \frac{1}{h^2}(4u_{i,j} - u_{i-1,j} - u_{i+1,j} - u_{i,j-1} - u_{i,j+1}) + k^2 u_{i,j} = f_{i,j}
+\end{equation}
+与 Poisson 方程的唯一区别在于对角元增加了 $k^2$ 项。
+
+在 Fourier 域中，这个修正等价于将特征值从 $\lambda_{p,q}$ 变为 $\lambda_{p,q} + k^2$，
+频域求解公式变为：
+\begin{equation}
+  \hat{u}_{p,q} = \frac{\hat{f}_{p,q}}{\lambda_{p,q} + k^2}
+  \label{eq:helm-freq-solve}
+\end{equation}
+
+因此，所有 FFT 直接法（FA、CR、FACR、FFT9）均可自然推广到 Helmholtz 方程，
+只需在频域除数中加上 $k^2$ 项。
+
+\subsection{共振检测}
+
+当 $k^2$ 等于离散 Laplacian 的某个特征值时，
+频域除数 $\lambda_{p,q} + k^2$ 可能为零（或非常小），
+导致解不存在或不稳定。
+
+\begin{definition}[共振条件]
+  若存在模式 $(p,q)$ 使得 $|\lambda_{p,q} + k^2| < \varepsilon$
+  （$\varepsilon$ 为小常数），则称 $k^2$ 接近共振波数。
+\end{definition}
+
+本文实现了共振检测函数，在求解前检查频域除数的最小值，
+并在检测到共振时发出警告。
+
+\subsection{Neumann 边界条件的 Ghost-Point 对称化方法}
+
+对于 Neumann 边界条件，ghost-point Laplacian 矩阵 $G$ 是非对称的。
+如第\ref{sec:math}章所述，通过对角缩放 $S = D^{-1}GD$ 实现对称化，
+使得 $S$ 可被 DCT-I 对角化。
+
+\subsubsection{Helmholtz 修正}
+
+对于 Helmholtz 方程，Neumann 边界条件下的频域求解公式为：
+\begin{equation}
+  \hat{u}_{k,l} = \frac{\hat{f}_{k,l}}{\lambda_k^{\mathrm{Neu}} + \lambda_l^{\mathrm{Neu}} + k^2}
+\end{equation}
+其中 Neumann 特征值为：
+\begin{equation}
+  \lambda_k^{\mathrm{Neu}} = \frac{2}{h^2}\left(1 - \cos\frac{k\pi}{n-1}\right),
+  \quad k = 0, 1, \ldots, n-1
+\end{equation}
+
+注意 $k=0$ 对应 $\lambda_0^{\mathrm{Neu}} = 0$（常数模式），
+对于 Poisson 方程（$k^2 = 0$）会导致奇异性，
+但对于 Helmholtz 方程（$k^2 > 0$），分母为 $k^2 > 0$，无奇异性。
+
+\subsubsection{CR/FACR 中的 Neumann 处理}
+
+在 CR 和 FACR 方法中，1D 变换后的 $y$-方向三对角系统的结构
+依赖于 $x$ 方向的边界条件类型。
+
+对于 $x$-方向 Neumann 边界条件，经过 DCT-I 变换后，
+$y$-方向三对角系统的次对角线不再是常数 $-1$，
+而是变系数 $\mathbf{e} = [-\sqrt{2}, -1, -1, \ldots, -1, -\sqrt{2}]$。
+这要求 CR 和 FACR 使用通用对称三对角 Thomas 算法（thomas\_sym）
+而非常数系数版本。
+
+\subsection{混合边界条件}
+
+对于混合边界条件，例如 $x$-方向 Neumann、$y$-方向 Dirichlet，
+$x$-方向使用 DCT-I 变换（$n$ 个节点），
+$y$-方向使用 DST-I 变换（$n-2$ 个内节点）。
+右端项的缩放和边界修正需针对各方向分别处理。

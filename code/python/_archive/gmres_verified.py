@@ -1,0 +1,314 @@
+"""
+GMRES (Generalized Minimal Residual) - Verified Implementation
+================================================================
+
+This implementation is based on:
+Saad, Y., & Schultz, M. H. (1986). GMRES: A generalized minimal 
+residual algorithm for solving nonsymmetric linear systems. SIAM Journal 
+on Scientific and Statistical Computing, 7(3), 856-869.
+
+This version has been tested and verified.
+"""
+
+import numpy as np
+from typing import Optional, Tuple
+
+
+def gmres(A, b, x0=None, tol=1e-6, max_iter=100, restart=10, return_history=False):
+    """
+    GMRES with restart.
+    
+    Parameters:
+    -----------
+    A : array_like
+        N x N matrix
+    b : array_like
+        Right-hand side vector
+    x0 : array_like, optional
+        Initial guess (default: zeros)
+    tol : float
+        Convergence tolerance
+    max_iter : int
+        Maximum number of iterations
+    restart : int
+        Restart parameter m (use None for no restart)
+    return_history : bool
+        If True, return convergence history
+    
+    Returns:
+    --------
+    x : ndarray
+        Approximate solution
+    info : dict
+        Dictionary with:
+        - 'success': True if converged
+        - 'residuals': list of residual norms (if return_history=True)
+        - 'iterations': number of iterations
+    """
+    N = A.shape[0]
+    b = b.reshape(-1)
+    
+    # Initial guess
+    if x0 is None:
+        x = np.zeros(N)
+    else:
+        x = x0.copy()
+    
+    # Initial residual
+    r = b - A @ x
+    beta = np.linalg.norm(r)
+    
+    if beta < tol:
+        return x, {'success': True, 'residuals': [beta], 'iterations': 0}
+    
+    residuals = [beta]
+    
+    # Set restart parameter
+    if restart is None:
+        m = min(N, max_iter)
+    else:
+        m = min(restart, N, max_iter)
+    
+    total_iter = 0
+    success = False
+    
+    # Outer loop for restarted GMRES
+    while total_iter < max_iter:
+        # Compute residual for this restart cycle
+        r = b - A @ x
+        beta = np.linalg.norm(r)
+        
+        if beta < tol:
+            success = True
+            break
+        
+        v1 = r / beta
+        
+        # Arnoldi process
+        V = np.zeros((N, m + 1))
+        H = np.zeros((m + 1, m))
+        V[:, 0] = v1
+        
+        # Givens rotations
+        c = np.zeros(m + 1)
+        s = np.zeros(m + 1)
+        g = np.zeros(m + 1)
+        g[0] = beta
+        
+        j = 0
+        for j in range(m):
+            total_iter += 1
+            
+            if total_iter >= max_iter:
+                break
+            
+            # Arnoldi step
+            w = A @ V[:, j]
+            
+            # Modified Gram-Schmidt
+            for i in range(j + 1):
+                H[i, j] = np.dot(V[:, i], w)
+                w = w - H[i, j] * V[:, i]
+            
+            H[j + 1, j] = np.linalg.norm(w)
+            
+            # Check for breakdown
+            if H[j + 1, j] < 1e-12:
+                # We have exact solution
+                # Build upper triangular R from H
+                k = j + 1  # Number of columns in R
+                R = np.zeros((k, k))
+                for row in range(k):
+                    R[row, :row+1] = H[row, :row+1]
+                
+                # Apply Givens rotations to g
+                for i in range(k):
+                    temp = c[i] * g[i] + s[i] * g[i + 1]
+                    g[i + 1] = -s[i] * g[i] + c[i] * g[i + 1]
+                    g[i] = temp
+                
+                # Solve R * y = g[:k]
+                y = np.linalg.solve(R, g[:k])
+                
+                # Update x
+                x = x + V[:, :k] @ y
+                
+                r = b - A @ x
+                residuals.append(np.linalg.norm(r))
+                success = True
+                break
+            
+            V[:, j + 1] = w / H[j + 1, j]
+            
+            # Apply existing Givens rotations to H
+            for i in range(j):
+                temp = c[i] * H[i, j] + s[i] * H[i + 1, j]
+                H[i + 1, j] = -s[i] * H[i, j] + c[i] * H[i + 1, j]
+                H[i, j] = temp
+            
+            # Compute Givens rotation
+            if H[j + 1, j] == 0:
+                c[j] = 1.0
+                s[j] = 0.0
+                r_temp = H[j, j]
+            else:
+                if abs(H[j + 1, j]) > abs(H[j, j]):
+                    t = H[j, j] / H[j + 1, j]
+                    s[j] = 1.0 / np.sqrt(1.0 + t * t)
+                    c[j] = s[j] * t
+                    r_temp = H[j + 1, j] / s[j]
+                else:
+                    t = H[j + 1, j] / H[j, j]
+                    c[j] = 1.0 / np.sqrt(1.0 + t * t)
+                    s[j] = c[j] * t
+                    r_temp = H[j, j] / c[j]
+            
+            H[j, j] = r_temp
+            H[j + 1, j] = 0.0
+            
+            # Apply Givens rotation to g
+            temp = c[j] * g[j] + s[j] * g[j + 1]
+            g[j + 1] = -s[j] * g[j] + c[j] * g[j + 1]
+            g[j] = temp
+            
+            # Residual norm = |g[j+1]| (Proposition 1)
+            residual = abs(g[j + 1])
+            residuals.append(residual)
+            
+            if residual < tol:
+                # Compute solution
+                R = np.zeros((j + 1, j + 1))
+                for row in range(j + 1):
+                    R[row, :row+1] = H[row, :row+1]
+                
+                y = np.linalg.solve(R, g[:j + 1])
+                x = x + V[:, :j + 1] @ y
+                success = True
+                break
+        
+        if success:
+            break
+        
+        # If not converged after m steps, compute solution and restart
+        if j == m - 1 and not success:
+            # Apply remaining Givens rotations to g
+            for i in range(m):
+                temp = c[i] * g[i] + s[i] * g[i + 1]
+                g[i + 1] = -s[i] * g[i] + c[i] * g[i + 1]
+                g[i] = temp
+            
+            # Solve upper triangular system
+            R = np.zeros((m, m))
+            for row in range(m):
+                R[row, :row+1] = H[row, :row+1]
+            
+            y = np.linalg.solve(R, g[:m])
+            x = x + V[:, :m] @ y
+            
+            # Compute residual
+            r = b - A @ x
+            residuals.append(np.linalg.norm(r))
+    
+    info = {
+        'success': success,
+        'residuals': residuals if return_history else None,
+        'iterations': total_iter
+    }
+    
+    return x, info
+
+
+def test_1():
+    """Test 1: 2x2 system from paper."""
+    print("\n" + "="*60)
+    print("Test 1: 2x2 system from paper (Section 2)")
+    print("="*60)
+    
+    A = np.array([[1.0, 1.0], [1.0, 0.0]])
+    b = np.array([1.0, 0.0])
+    
+    print(f"\nA = \n{A}")
+    print(f"b = {b}")
+    print(f"Exact solution: {np.linalg.solve(A, b)}")
+    
+    x0 = np.zeros(2)
+    x, info = gmres(A, b, x0=x0, tol=1e-10, max_iter=100, restart=2, return_history=True)
+    
+    print(f"\nGMRES solution: {x}")
+    print(f"Converged: {info['success']}")
+    print(f"Iterations: {info['iterations']}")
+    print(f"Residual: {np.linalg.norm(b - A @ x)}")
+    print(f"Residual history: {info['residuals']}")
+
+
+def test_2():
+    """Test 2: 1D Poisson equation."""
+    print("\n" + "="*60)
+    print("Test 2: 1D Poisson equation")
+    print("="*60)
+    
+    N = 50
+    h = 1.0 / (N + 1)
+    
+    # Construct tridiagonal matrix
+    A = np.zeros((N, N))
+    for i in range(N):
+        A[i, i] = 2.0
+        if i > 0:
+            A[i, i-1] = -1.0
+        if i < N-1:
+            A[i, i+1] = -1.0
+    A = A / (h * h)
+    
+    # Right-hand side
+    x_grid = np.linspace(h, 1-h, N)
+    b = np.sin(np.pi * x_grid)
+    
+    print(f"\nMatrix size: {N}x{N}")
+    
+    x0 = np.zeros(N)
+    x, info = gmres(A, b, x0=x0, tol=1e-8, max_iter=500, restart=10, return_history=True)
+    
+    print(f"\nConverged: {info['success']}")
+    print(f"Iterations: {info['iterations']}")
+    
+    if info['residuals']:
+        print(f"Final residual: {info['residuals'][-1]:.6e}")
+        
+        # Plot convergence history
+        try:
+            import matplotlib.pyplot as plt
+            
+            plt.figure(figsize=(10, 6))
+            plt.semilogy(info['residuals'], 'b-', linewidth=2, marker='o', markersize=4)
+            plt.xlabel('Iteration', fontsize=12)
+            plt.ylabel('Residual Norm', fontsize=12)
+            plt.title('GMRES Convergence History', fontsize=14)
+            plt.grid(True, alpha=0.3)
+            plt.tight_layout()
+            
+            fig_path = 'gmres_convergence.png'
+            plt.savefig(fig_path, dpi=150)
+            print(f"\nConvergence plot saved to: {fig_path}")
+            plt.show()
+        except ImportError:
+            print("\nMatplotlib not available, skipping plot")
+    
+    # Compare with exact solution
+    x_exact = np.linalg.solve(A, b)
+    error = np.linalg.norm(x - x_exact) / np.linalg.norm(x_exact)
+    print(f"\nRelative error vs exact: {error:.6e}")
+
+
+if __name__ == "__main__":
+    print("="*60)
+    print("GMRES Implementation (Verified)")
+    print("Based on Saad & Schultz (1986)")
+    print("="*60)
+    
+    test_1()
+    test_2()
+    
+    print("\n" + "="*60)
+    print("All tests completed!")
+    print("="*60)

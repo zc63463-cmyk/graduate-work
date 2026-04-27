@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+
+# LaTeX
+*.aux
+*.log
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.out
+*.bbl
+*.blg
+*.toc
+*.lof
+*.lot
+*.idx
+*.ilg
+*.ind
+*.bcf
+*.run.xml
+*.xdv
+*.nav
+*.snm
+*.vrb
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# WorkBuddy internal
+.workbuddy/
+
+# Lean build artifacts
+.lake/
+code/pde_fft_lean/.lake/
+code/lean4_formalization/.lake/
+*.olean
+*.trace
+*.hash

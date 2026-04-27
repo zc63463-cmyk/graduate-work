@@ -1,0 +1,107 @@
+% ============================================================
+% 第七章 结论与展望
+% ============================================================
+\section{结论与展望}
+\label{sec:conclusion}
+
+\subsection{本文工作总结}
+
+本文针对矩形区域上的 Poisson 方程和 Helmholtz 方程，
+系统研究了基于 FFT 的快速直接求解方法，并与 GMRES 迭代法进行了对比分析。
+主要工作和贡献如下：
+
+\begin{enumerate}
+  \item \textbf{FFT 快速直接求解器族}：实现了基于离散正弦/余弦变换的五种快速求解器
+        ——FA（Fourier Analysis）、CR（Cyclic Reduction）、FACR（混合算法）、
+        FFT9（四阶紧致差分）和五点差分直接法。
+        其中 FACR 算法通过结合 CR 和 FA 的优势，
+        实现了 $O(N^2 \log\log N)$ 的最优时间复杂度。
+
+  \item \textbf{Helmholtz 方程扩展}：通过 $k^2$ 修正将 Poisson 求解器自然推广到
+        Helmholtz 方程 $(-\nabla^2 + k^2)u = f$，
+        并分析了共振条件 $\lambda_p + \lambda_q + k^2 = 0$ 对求解的影响。
+
+  \item \textbf{Neumann 边界条件的 ghost-point 对称化方法}：
+        针对 Neumann 边界条件导致的 Laplacian 矩阵非对称问题，
+        提出了 ghost-point 方法配合对称化 DCT-I 变换的解决方案。
+        通过对角缩放矩阵 $D = \mathrm{diag}(\sqrt{2}, 1, \ldots, 1, \sqrt{2})$
+        将非对称矩阵 $G$ 对称化为 $S = D^{-1}GD$，
+        使其被 DCT-I 对角化，从而在 FFT 框架内统一处理 Dirichlet 和 Neumann 边界条件。
+
+  \item \textbf{六阶格式不可行的证明}：通过 Fourier 特征值分析严格证明了，
+        对于九点紧致差分格式的三参数修正族
+        $(L_h + \alpha h^2 L_h^{(5)})u - k^2(R_h+\beta h^2 I)u = -(R_h+\gamma h^2 I)f$，
+        不存在统一的常数 $(\alpha, \beta, \gamma)$ 使得截断误差达到 $O(h^6)$。
+        具体地，在 Poisson 方程情形下，$c_2 = 0$ 要求 $\alpha = -\gamma$，
+        但 $c_4(1,0,\gamma) = 0$ 要求 $\gamma = -1/20$，
+        而 $c_4(1,1,\gamma) = 0$ 要求 $\gamma = 1/30$，
+        两者矛盾（$2(60\gamma+3)-(120\gamma-4) = 10 \neq 0$）。
+        该结论已在 Lean 4 定理证明器中完成形式化验证（整数域 12 定理 + 实数域 5 定理）。
+        在 Helmholtz 方程（$k^2 \neq 0$）情形下，连 $c_2 = 0$ 都无法统一满足，
+        即不存在使 $O(h^2)$ 误差项消失的通用参数。
+
+  \item \textbf{GMRES 迭代法对比}：实现了基于 Givens 旋转的 GMRES(m) 算法，
+        构造了二维 Helmholtz 方程的五点差分稀疏矩阵，
+        在相同测试问题下与 FFT 直接法进行了系统的精度、效率和收敛性对比。
+        数值实验表明，FFT 直接法在规则区域上具有显著的效率优势。
+\end{enumerate}
+
+\subsection{主要结论}
+
+\begin{enumerate}
+  \item 在规则矩形区域上，FFT 直接法是求解 Poisson/Helmholtz 方程的首选方法。
+        FA 方法实现简单、效率高；FACR 方法在细网格下具有最优复杂度；
+        FFT9 方法以适度的额外计算量换取四阶精度。
+
+  \item GMRES 迭代法在规则区域上的效率不如 FFT 直接法，
+        但具有更好的通用性——它可以处理非均匀网格、
+        变系数问题和复杂几何区域，这些是 FFT 直接法难以处理的。
+
+  \item 波数 $k$ 对求解效果有显著影响：
+        FFT 直接法对波数不敏感（只要避开共振），
+        而 GMRES 的迭代次数随波数增大而显著增加，
+        反映了 Helmholtz 方程在大波数下的固有困难。
+
+  \item Ghost-point 对称化 DCT-I 方法是处理 Neumann 边界条件的一种优雅方案，
+        它将 Neumann 问题无缝纳入 FFT 直接法框架，
+        保持了方法的统一性和高效性。
+\end{enumerate}
+
+\subsection{展望}
+
+本文的研究可以在以下方向进一步拓展：
+
+\begin{enumerate}
+  \item \textbf{非均匀网格}：当前方法基于均匀网格。
+        对于解变化剧烈的区域，自适应网格加密技术（如 FAC 方法）
+        可以在保持精度的同时减少计算量。
+        如何将 FFT 快速求解器与非均匀网格结合是一个有价值的研究方向。
+
+  \item \textbf{变系数问题}：当方程系数（如介质参数）空间变化时，
+        FFT 直接法不再适用，此时迭代法（配合适当的预处理）成为主要选择。
+        研究基于 FFT 的高效预处理子是一个重要的课题。
+
+  \item \textbf{高维问题}：本文的方法可以自然推广到三维问题。
+        三维问题的 FFT 直接法复杂度为 $O(N^3 \log N)$，
+        而 FACR 可以达到 $O(N^3 \log\log N)$，
+        但内存需求随维数快速增长，需要更高效的实现策略。
+
+  \item \textbf{大规模 Helmholtz 问题}：对于高频（大波数）Helmholtz 方程，
+        GMRES 的收敛性严重依赖于预处理的质量。
+        研究基于 Shifted Laplacian 的预处理方法、
+        多层方法（Multigrid）以及区域分解方法，
+        是解决大规模 Helmholtz 问题的前沿方向~\cite{Ernst2011, YaoDengming2018, Niu2009}。
+        此外，物理信息神经网络（PINN）等新兴方法~\cite{ShanLianpu2023}
+        也为 Helmholtz 方程的求解提供了新思路。
+
+  \item \textbf{形式化验证}：本文对六阶不可行定理进行了 Lean 4 形式化验证，
+        这是将交互式定理证明器应用于数值分析领域的一次尝试。
+        未来可以将形式化验证扩展到更广泛的差分格式理论，
+        如稳定性分析（Lax 等价定理）、收敛阶估计等，
+        为数值算法的可靠性提供机器可验证的数学保证。
+
+  \item \textbf{GPU 加速}：FFT 和稀疏矩阵-向量乘法都适合在 GPU 上并行执行。
+        利用 CUDA 或 OpenCL 实现 GPU 加速版本，
+        可以将求解速度提升一到两个数量级，
+        使其能够处理更大规模的实际问题。
+\end{enumerate}

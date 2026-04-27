@@ -1,0 +1,102 @@
+% ============================================================
+% 第一章 引言
+% ============================================================
+\section{引言}
+
+\subsection{研究背景与意义}
+
+椭圆型偏微分方程是数学物理中最重要的方程类型之一，
+广泛应用于流体力学、电磁场计算、声学传播、热传导等领域。
+其中 Poisson 方程 $-\nabla^2 u = f$ 和 Helmholtz 方程
+$(-\nabla^2 + k^2)u = f$ 是两类最基本、最典型的椭圆型方程。
+Poisson 方程描述了稳态热传导、静电势等物理过程，
+而 Helmholtz 方程则是时间简谐波问题的频域形式，
+在声学散射、地震波传播和量子力学中有重要应用~\cite{ShaoWenting2017, LiuJiayuan2019, LiSiqing2020}。
+
+数值求解椭圆型方程的方法大致分为两类：
+\textbf{直接法}和\textbf{迭代法}~\cite{MinTao2017}。
+直接法通过矩阵分解或变换技术一次性得到精确解，
+其典型代表包括基于快速 Fourier 变换（FFT）的谱方法；
+迭代法则从初始猜测出发逐步逼近解，
+其代表包括 Krylov 子空间方法如 GMRES。
+
+在规则区域（如矩形域）上，FFT 直接法具有显著的效率优势：
+利用离散正弦变换（DST）或离散余弦变换（DCT）的对角化性质，
+可以将 $N^2$ 个耦合的差分方程转化为 $N^2$ 个独立的代数方程，
+总计算量仅为 $O(N^2 \log N)$，远优于一般稀疏矩阵直接分解的 $O(N^3)$。
+循环约化（CR）和 FACR 混合算法更可将复杂度降至 $O(N^2 \log\log N)$。
+
+然而，FFT 直接法的适用范围受限于区域形状和方程系数的可分离性。
+对于非规则区域或变系数问题，迭代法（如 GMRES）更具灵活性，
+但收敛速度受矩阵条件数影响，通常需要预处理技术加速。
+
+因此，系统对比 FFT 直接法与 GMRES 迭代法在不同条件下的求解性能，
+对于选择合适的数值方法具有重要的理论和实践意义。
+
+\subsection{国内外研究现状}
+
+\subsubsection{基于 FFT 的快速直接法}
+
+Hockney \cite{Hockney1965} 首先提出了利用 Fourier 分析求解
+离散 Poisson 方程的方法，计算复杂度为 $O(N^2 \log N)$。
+Buzbee 等 \cite{Buzbee1970} 系统分析了循环约化（CR）方法，
+并提出了 FACR 混合算法，在最优参数下达到 $O(N^2 \log\log N)$ 的复杂度。
+Swarztrauber \cite{Swarztrauber1977} 对 CR、FA 和 FACR 方法
+进行了完整的理论分析，明确了各种方法的理论复杂度。
+Houstis 和 Papatheodorou \cite{HoustisPapatheodorou1979a, HoustisPapatheodorou1979b}
+提出了基于九点紧致差分格式的 FFT9 方法，实现了四阶精度的快速求解。
+在国内，邵文婷\cite{ShaoWenting2017}研究了不规则区域上 Poisson 方程的快速求解器，
+李国燕等\cite{LiGuoyan2019}实现了基于 FFT 的泊松方程快速求解器的硬件加速。
+
+在差分格式方面，Gupta 等 \cite{Gupta1984} 和 Spotz 等 \cite{Spotz1998}
+发展了高阶紧致差分格式，Strang \cite{Strang1999} 对 DCT 的数学性质
+做了精辟阐述，为 Neumann 边界条件下的 FFT 求解提供了理论基础。
+朱爱玲\cite{ZhuAiling2015}研究了泊松方程五点差分格式的外推法，
+进一步提高了低阶格式的精度。
+
+\subsubsection{Helmholtz 方程求解}
+
+Helmholtz 方程的数值求解面临两个主要挑战：
+大波数 $k$ 导致离散矩阵条件数急剧增大，
+以及共振波数下的解不唯一性。
+Bayliss 等 \cite{Bayliss1983} 研究了迭代法求解 Helmholtz 方程的困难，
+Ernst 和 Gander \cite{Ernst2011} 系统分析了经典迭代法求解 Helmholtz
+方程的收敛性障碍。
+Ihlenburg \cite{Ihlenburg1998} 对有限元方法求解 Helmholtz 方程
+进行了系统的误差分析。
+国内方面，刘镓源\cite{LiuJiayuan2019}研究了两类 Helmholtz 问题的差分法，
+姚登明\cite{YaoDengming2018}对带 PML 边界条件的 Helmholtz 方程
+进行了有限差分方法研究。
+
+\subsubsection{GMRES 迭代法}
+
+Saad 和 Schultz \cite{SaadSchultz1986} 于 1986 年提出 GMRES 算法，
+这是求解非对称线性系统的最重要的迭代法之一。
+算法的核心思想是在 Krylov 子空间中极小化残差范数，
+通过 Arnoldi 过程构建正交基，并用 Givens 旋转增量求解最小二乘问题。
+Saad \cite{Saad2003} 对 Krylov 子空间方法做了系统总结。
+牛强等\cite{Niu2009}提出了改进的 GMRES 方法，
+有效提升了求解非对称线性方程组的收敛速度。
+
+\subsection{本文工作与结构安排}
+
+本文的主要工作和创新点如下：
+
+\begin{enumerate}[itemsep=2pt]
+  \item 系统实现了基于 FFT 的五种快速直接求解器（FA、CR、FACR、FFT9、5点基准），
+        支持 Dirichlet、Neumann 和混合边界条件；
+  \item 对 Neumann 边界条件，采用 ghost-point 方法配合对称化 DCT-I 变换，
+        解决了非对称 Laplacian 矩阵的对角化问题；
+  \item 实现了基于 Givens 旋转的 GMRES 迭代法，构造了 2D Helmholtz 稀疏矩阵，
+        与 FFT 直接法进行了系统对比；
+  \item 通过特征值分析证明了六阶紧致差分格式不存在常数修正因子，
+        为四阶格式是最优选择提供了理论依据。
+\end{enumerate}
+
+本文结构安排如下：
+第\ref{sec:math}章介绍数学基础与差分格式；
+第\ref{sec:fft}章阐述基于 FFT 的快速直接法；
+第\ref{sec:helmholtz}章讨论 Helmholtz 方程的求解与边界条件处理；
+第\ref{sec:gmres}章介绍 GMRES 迭代法；
+第\ref{sec:experiments}章给出数值实验结果；
+第\ref{sec:conclusion}章总结全文并展望未来工作。

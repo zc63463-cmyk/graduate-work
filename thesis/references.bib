@@ -1,0 +1,371 @@
+%% ============================================================
+%% references.bib
+%% 矩形区域上 Poisson/Helmholtz 方程的 FFT 快速求解器与迭代法对比研究
+%% ============================================================
+
+%% ============================================================
+%% Part 1: Core References (GMRES, FFT Solvers)
+%% ============================================================
+
+@article{SaadSchultz1986,
+  author  = {Saad, Youcef and Schultz, Martin H.},
+  title   = {{GMRES}: A Generalized Minimal Residual Algorithm for Solving Nonsymmetric Linear Systems},
+  journal = {SIAM Journal on Scientific and Statistical Computing},
+  volume  = {7},
+  number  = {3},
+  pages   = {856--869},
+  year    = {1986},
+  doi     = {10.1137/0907058}
+}
+
+@article{HoustisPapatheodorou1979a,
+  author  = {Houstis, E. N. and Papatheodorou, T. S.},
+  title   = {High-Order Fast Elliptic Equation Solvers},
+  journal = {ACM Transactions on Mathematical Software},
+  volume  = {5},
+  number  = {4},
+  pages   = {431--441},
+  year    = {1979},
+  doi     = {10.1145/355853.355859}
+}
+
+@article{HoustisPapatheodorou1979b,
+  author  = {Houstis, E. N. and Papatheodorou, T. S.},
+  title   = {Algorithm 543: {FFT9}, Fast Solution of {Helmholtz}-Type Partial Differential Equations},
+  journal = {ACM Transactions on Mathematical Software},
+  volume  = {5},
+  number  = {4},
+  pages   = {490--493},
+  year    = {1979},
+  doi     = {10.1145/355853.355865}
+}
+
+@article{Swarztrauber1977,
+  author  = {Swarztrauber, Paul N.},
+  title   = {The Methods of Cyclic Reduction, {Fourier} Analysis and the {FACR} Algorithm for the Discrete Solution of {Poisson's} Equation on a Rectangle},
+  journal = {SIAM Review},
+  volume  = {19},
+  number  = {3},
+  pages   = {490--501},
+  year    = {1977},
+  doi     = {10.1137/1019079}
+}
+
+@article{Strang1999,
+  author  = {Strang, Gilbert},
+  title   = {The Discrete Cosine Transform},
+  journal = {SIAM Review},
+  volume  = {41},
+  number  = {1},
+  pages   = {135--147},
+  year    = {1999},
+  doi     = {10.1137/S0036144598336745}
+}
+
+@article{Hockney1965,
+  author  = {Hockney, Roger W.},
+  title   = {A Fast Direct Solution of {Poisson's} Equation Using {Fourier} Analysis},
+  journal = {Journal of the ACM},
+  volume  = {12},
+  number  = {1},
+  pages   = {95--113},
+  year    = {1965},
+  doi     = {10.1145/321250.321259}
+}
+
+@article{Buzbee1970,
+  author  = {Buzbee, Binton L. and Dorr, Fred W. and George, Joseph A. and Golub, Gene H.},
+  title   = {The Direct Solution of the Discrete {Poisson} Equation on a Rectangle},
+  journal = {SIAM Journal on Numerical Analysis},
+  volume  = {7},
+  number  = {4},
+  pages   = {727--736},
+  year    = {1970}
+}
+
+@article{Temperton1979,
+  author  = {Temperton, Clive},
+  title   = {Direct Methods for the Solution of the Discrete {Poisson} Equation: Some Comparisons},
+  journal = {Journal of Computational Physics},
+  volume  = {31},
+  number  = {1},
+  pages   = {1--20},
+  year    = {1979}
+}
+
+@article{SwarztrauberSweet1979,
+  author  = {Swarztrauber, Paul N. and Sweet, Roland A.},
+  title   = {Algorithm 541: Efficient {Fortran} Subprograms for the Solution of Separable Elliptic Partial Differential Equations},
+  journal = {ACM Transactions on Mathematical Software},
+  volume  = {5},
+  number  = {3},
+  pages   = {352--364},
+  year    = {1979}
+}
+
+%% ============================================================
+%% Part 2: FFT9 / Compact Finite Difference
+%% ============================================================
+
+@article{Gupta1984,
+  author  = {Gupta, Murli M. and Manohar, Rampuri P. and Stephenson, John W.},
+  title   = {A Single Cell High Order Scheme for the Convection-Diffusion Equation with Variable Coefficients},
+  journal = {International Journal for Numerical Methods in Fluids},
+  volume  = {4},
+  pages   = {641--651},
+  year    = {1984}
+}
+
+@article{Spotz1998,
+  author  = {Spotz, William F. and Carey, Graham F.},
+  title   = {A High-Order Compact Formulation for the 3D {Poisson} Equation},
+  journal = {Numerical Methods for Partial Differential Equations},
+  volume  = {12},
+  pages   = {235--243},
+  year    = {1998}
+}
+
+@article{Sutmann2007,
+  author  = {Sutmann, Gustav},
+  title   = {Compact Finite Difference Schemes of Sixth Order for the {Helmholtz} Equation},
+  journal = {Journal of Computational and Applied Mathematics},
+  volume  = {203},
+  pages   = {15--31},
+  year    = {2007}
+}
+
+@article{Lynch1977,
+  author  = {Lynch, Robert E. and Rice, John R.},
+  title   = {A High-Order Difference Method for Differential Equations},
+  journal = {Mathematics of Computation},
+  volume  = {34},
+  number  = {150},
+  pages   = {333--372},
+  year    = {1980},
+  note    = {Originally circulated as CSD-TR 316, Purdue University, 1977}
+}
+
+%% ============================================================
+%% Part 3: Helmholtz Equation
+%% ============================================================
+
+@article{Bayliss1983,
+  author  = {Bayliss, Alvin and Goldstein, C. I. and Turkel, Eli},
+  title   = {An Iterative Method for the {Helmholtz} Equation},
+  journal = {Journal of Computational Physics},
+  volume  = {49},
+  pages   = {443--457},
+  year    = {1983}
+}
+
+@article{Ernst2011,
+  author  = {Ernst, Oliver G. and Gander, Martin J.},
+  title   = {Why it is Difficult to Solve {Helmholtz} Problems with Classical Iterative Methods},
+  journal = {Lecture Notes in Computational Science and Engineering},
+  volume  = {83},
+  pages   = {325--363},
+  year    = {2011}
+}
+
+@book{Ihlenburg1998,
+  author    = {Ihlenburg, Frank},
+  title     = {Finite Element Analysis of Acoustic Scattering},
+  publisher = {Springer},
+  year      = {1998}
+}
+
+%% ============================================================
+%% Part 4: GMRES and Iterative Methods
+%% ============================================================
+
+@book{Saad2003,
+  author    = {Saad, Youcef},
+  title     = {Iterative Methods for Sparse Linear Systems},
+  edition   = {2nd},
+  publisher = {SIAM},
+  year      = {2003}
+}
+
+@article{Walker1988,
+  author  = {Walker, Homer F.},
+  title   = {Implementation of the {GMRES} Method Using Householder Transformations},
+  journal = {SIAM Journal on Scientific and Statistical Computing},
+  volume  = {9},
+  number  = {1},
+  pages   = {152--163},
+  year    = {1988}
+}
+
+@article{Niu2009,
+  author  = {牛强 and others},
+  title   = {求解非对称线性方程组的改进 {GMRES} 方法},
+  journal = {数值计算与计算机应用},
+  year    = {2009}
+}
+
+%% ============================================================
+%% Part 5: Chinese References (Core Thesis Papers)
+%% ============================================================
+
+@article{MinTao2017,
+  author  = {闵涛 and 张世梅 and 任菊成},
+  title   = {求解二阶椭圆型方程 {Dirichlet} 问题的几种算法},
+  journal = {数值计算与计算机应用},
+  volume  = {38},
+  number  = {1},
+  pages   = {30--38},
+  year    = {2017}
+}
+
+@phdthesis{ShaoWenting2017,
+  author = {邵文婷},
+  title  = {不规则区域上泊松方程的快速求解器},
+  school = {南京大学},
+  year   = {2017}
+}
+
+@phdthesis{LiuJiayuan2019,
+  author = {刘镓源},
+  title  = {两类 {Helmholtz} 问题的差分法},
+  school = {南京大学},
+  year   = {2019}
+}
+
+@phdthesis{LiSiqing2020,
+  author = {李思卿},
+  title  = {椭圆偏微分方程边值与逆边值问题的数值方法及稳定性分析},
+  school = {东南大学},
+  year   = {2020}
+}
+
+@article{ZhuAiling2015,
+  author  = {朱爱玲},
+  title   = {泊松方程的五点差分外推法},
+  journal = {大学数学},
+  year    = {2015}
+}
+
+@phdthesis{YaoDengming2018,
+  author = {姚登明},
+  title  = {带 {PML} 边界条件的 {Helmholtz} 方程的有限差分方法研究},
+  school = {南京大学},
+  year   = {2018}
+}
+
+@article{ShanLianpu2023,
+  author  = {单连璞 and others},
+  title   = {物理信息神经网络求解亥姆霍兹方程的配置点采样方法},
+  journal = {计算物理},
+  year    = {2023}
+}
+
+@article{LiGuoyan2019,
+  author  = {李国燕 and others},
+  title   = {基于 {FFT} 的泊松方程快速求解器的硬件实现},
+  journal = {计算机工程与科学},
+  year    = {2019}
+}
+
+@article{DengZiwei2022,
+  author  = {邓子为 and others},
+  title   = {高效可扩展的3维快速傅里叶变换异构计算架构},
+  journal = {计算机研究与发展},
+  year    = {2022}
+}
+
+@article{ChangShuangling2015,
+  author  = {常双领},
+  title   = {三对角托普利茨矩阵族性态的一个判定算法},
+  journal = {数学杂志},
+  year    = {2015}
+}
+
+@phdthesis{TangYiyun2020,
+  author = {唐毅鋆},
+  title  = {卷积视角下循环矩阵对角化证明新方法及其应用},
+  school = {南京大学},
+  year   = {2020}
+}
+
+@phdthesis{LiaoAiai2019,
+  author = {廖嫒嫒},
+  title  = {循环矩阵的某些性质及应用},
+  school = {云南大学},
+  year   = {2019}
+}
+
+@article{ChenHuating2016,
+  author  = {陈化亭},
+  title   = {有限元法和差分法的关系——最佳参数的 $\lambda$ 求法},
+  journal = {大学数学},
+  year    = {2016}
+}
+
+@phdthesis{ZhouYang2018,
+  author = {周阳},
+  title  = {有限维约化方法在椭圆型偏微分方程中的应用},
+  school = {南京大学},
+  year   = {2018}
+}
+
+@phdthesis{WangShuo2020,
+  author = {王硕},
+  title  = {求解一维变系数椭圆型方程边值问题的 {RBF-FD} 格式},
+  school = {南京大学},
+  year   = {2020}
+}
+
+@phdthesis{ChenMiaomiao2021,
+  author = {陈苗苗},
+  title  = {求解偏微分方程的深度学习算法研究},
+  school = {南京大学},
+  year   = {2021}
+}
+
+%% ============================================================
+%% Part 6: Classic Textbooks
+%% ============================================================
+
+@book{LeVeque2007,
+  author    = {LeVeque, Randall J.},
+  title     = {Finite Difference Methods for Ordinary and Partial Differential Equations: Steady-State and Time-Dependent Problems},
+  publisher = {SIAM},
+  year      = {2007}
+}
+
+@book{Trefethen2000,
+  author    = {Trefethen, Lloyd N.},
+  title     = {Spectral Methods in {MATLAB}},
+  publisher = {SIAM},
+  year      = {2000}
+}
+
+@book{GolubVanLoan2013,
+  author    = {Golub, Gene H. and Van Loan, Charles F.},
+  title     = {Matrix Computations},
+  edition   = {4th},
+  publisher = {Johns Hopkins University Press},
+  year      = {2013}
+}
+
+@book{Quarteroni2007,
+  author    = {Quarteroni, Alfio and Sacco, Riccardo and Saleri, Fausto},
+  title     = {Numerical Mathematics},
+  edition   = {2nd},
+  publisher = {Springer},
+  year      = {2007}
+}
+
+@book{Samarskii2001,
+  author    = {Samarskii, Alexander A.},
+  title     = {The Theory of Difference Schemes},
+  publisher = {Marcel Dekker},
+  year      = {2001}
+}
+
+@book{Briggs1995,
+  author    = {Briggs, William L. and Henson, Van Emden},
+  title     = {The {DFT}: An Owner's Manual for the Discrete {Fourier} Transform},
+  publisher = {SIAM},
+  year      = {1995}
+}

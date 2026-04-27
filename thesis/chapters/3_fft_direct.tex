@@ -1,0 +1,368 @@
+% ============================================================
+% 第三章 基于 FFT 的快速直接法
+% ============================================================
+\section{基于 FFT 的快速直接法}
+\label{sec:fft}
+
+本章详细阐述四种基于 FFT 的快速直接求解方法。
+
+\subsection{Fourier Analysis (FA) 方法}
+
+FA 方法利用离散正弦变换（DST-I，Dirichlet BC）或离散余弦变换
+（DCT-I，Neumann BC）的对角化性质，将 2D 差分方程直接在频域求解。
+
+\subsubsection{DST-I 对角化的详细推导}
+
+对于 Dirichlet 边界条件，内节点 $(n-2)^2$ 个未知量对应的矩阵 $A$
+具有 Kronecker 积结构：
+\begin{equation}
+  A = I \otimes T + T \otimes I + k^2 I \otimes I
+  \label{eq:A_kron}
+\end{equation}
+其中 $T$ 由定理~\ref{thm:eigenvalues} 被 DST-I 对角化：$T = S^T \Lambda_x S$。
+
+将二维 DST-I 变换 $\mathcal{F} = S \otimes S$ 作用于方程 $A\mathbf{u} = \mathbf{f}$：
+\begin{align}
+  (S \otimes S)(I \otimes T + T \otimes I + k^2 I \otimes I)(S^T \otimes S^T)\hat{\mathbf{u}} &= (S \otimes S)\mathbf{f} \\
+  (I \otimes \Lambda_x + \Lambda_x \otimes I + k^2 I \otimes I)\hat{\mathbf{u}} &= \hat{\mathbf{f}}
+  \label{eq:freq_system}
+\end{align}
+其中 $\hat{\mathbf{u}} = (S \otimes S)\mathbf{u}$，$\hat{\mathbf{f}} = (S \otimes S)\mathbf{f}$。
+
+由于 $I \otimes \Lambda_x + \Lambda_x \otimes I + k^2 I \otimes I$ 是对角矩阵，
+方程~\eqref{eq:freq_system} 可以逐点求解：
+\begin{equation}
+  \hat{u}_{p,q} = \frac{\hat{f}_{p,q}}{\lambda_p + \lambda_q + k^2}, \quad p,q = 1, \ldots, N
+  \label{eq:freq_solve}
+\end{equation}
+
+\begin{algorithm}
+\caption{FA 方法求解离散 Poisson/Helmholtz 方程（Dirichlet BC）}
+\begin{algorithmic}[1]
+\REQUIRE 网格大小 $n$，右端项 $f$，波数平方 $k^2$
+\ENSURE 解 $u$
+\STATE 构建右端向量 $F_{i,j} = f(x_i, y_j)$，减去边界贡献
+\STATE 2D DST-I 变换：$\hat{F} = \mathrm{DST}(F)$
+\STATE 计算频域除数：$D_{p,q} = \lambda_p + \lambda_q + k^2$
+\STATE 频域求解：$\hat{U}_{p,q} = \hat{F}_{p,q} / D_{p,q}$
+\STATE 逆 2D DST-I 变换：$U_{\mathrm{int}} = \mathrm{IDST}(\hat{U})$
+\STATE 组装完整解：填充边界值
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{复杂度分析}：2D DST-I 可通过 $n-2$ 次 1D DST（行和列各一次）实现，
+每次 1D DST 的计算量为 $O(n \log n)$（利用 FFT 算法），
+总计算量为 $O(n^2 \log n) = O(N^2 \log N)$，其中 $N = n - 2$。
+
+\subsection{Cyclic Reduction (CR) 方法}
+
+CR 方法将 2D 问题转化为 $N = n-2$ 个独立的 1D 三对角方程组，
+每个方程组对应一个 Fourier 模式。
+
+\subsubsection{算法原理与推导}
+
+将差分方程组按 $x$ 方向排列为块三对角形式：
+\begin{equation}
+  -\mathbf{u}_{j-1} + T\mathbf{u}_j - \mathbf{u}_{j+1} + h^2 k^2 \mathbf{u}_j = h^2 \mathbf{f}_j, \quad j = 1, \ldots, N
+  \label{eq:block_tridiag}
+\end{equation}
+其中 $\mathbf{u}_j = (u_{1,j}, u_{2,j}, \ldots, u_{N,j})^T$ 为第 $j$ 行的内节点向量。
+
+对~\eqref{eq:block_tridiag}的每个方程左乘 DST-I 变换矩阵 $S$，
+利用 $STS^T = \Lambda_x$，得到 $N$ 个独立的标量三对角方程：
+\begin{equation}
+  -\hat{u}_{p,j-1} + \lambda_p \hat{u}_{p,j} - \hat{u}_{p,j+1} + h^2 k^2 \hat{u}_{p,j}
+  = h^2 \hat{f}_{p,j}, \quad j = 1, \ldots, N
+  \label{eq:mode_tridiag}
+\end{equation}
+对每个模式 $p$，这是一个标准的三对角方程组，可用 Thomas 算法在 $O(N)$ 时间内求解，
+$N$ 个模式共计 $O(N^2)$。加上 1D DST 的 $O(N^2 \log N)$，
+CR 方法的总复杂度为 $O(N^2 \log N)$。
+
+\subsubsection{CR 方法的物理意义}
+
+CR 方法的本质是\textbf{部分 Fourier 变换}：
+只在一个方向（$x$ 方向）做变换，
+另一个方向（$y$ 方向）保留物理空间的耦合关系。
+这使得 CR 天然适合处理 $y$ 方向变系数的问题
+（如 $k^2 = k^2(y)$ 的情况），而 FA 方法则不行。
+
+\subsubsection{奇偶约化（OER）的块三对角视角}
+
+CR 方法对~\eqref{eq:mode_tridiag}中每个模式的三对角系统执行奇偶约化，
+其数学本质等价于对对称三对角矩阵的 Gaussian 消元。
+考虑模式 $p$ 的三对角系统：
+\begin{equation}
+  e_{j-1}\hat{u}_{p,j-1} + d_j\hat{u}_{p,j} + e_j\hat{u}_{p,j+1} = h^2\hat{f}_{p,j}, \quad j = 1, \ldots, N
+  \label{eq:tridiag_general}
+\end{equation}
+其中 $d_j = \lambda_p + h^2 k^2$（常数对角元），$e_j = -1$（常数次对角元）。
+
+\textbf{前向消元}：消去第 $j$ 行的奇数下标变量 $\hat{u}_{p,2k-1}$。
+对相邻三行 $(2k-1, 2k, 2k+1)$ 做线性组合：
+\begin{align}
+  d'_k &= d_{2k} - \frac{e_{2k-1}^2}{d_{2k-1}} - \frac{e_{2k}^2}{d_{2k+1}}
+  = d - \frac{2}{d}
+  \label{eq:cr_diag} \\
+  e'_k &= -\frac{e_{2k} \cdot e_{2k+1}}{d_{2k+1}}
+  = -\frac{1}{d}
+  \label{eq:cr_offdiag} \\
+  b'_k &= b_{2k} - \frac{e_{2k-1}}{d_{2k-1}}b_{2k-1} - \frac{e_{2k}}{d_{2k+1}}b_{2k+1}
+  \label{eq:cr_rhs}
+\end{align}
+消元后的系统仍为三对角形式，但规模减半。
+
+\textbf{回代}：从前向消元产生的缩减系统中解出偶数下标变量，
+再利用奇数行方程恢复奇数下标变量：
+\begin{equation}
+  \hat{u}_{p,2k+1} = \frac{h^2\hat{f}_{p,2k+1} - e_{2k}\hat{u}_{p,2k} - e_{2k+1}\hat{u}_{p,2k+2}}{d_{2k+1}}
+  \label{eq:cr_backsub}
+\end{equation}
+
+\begin{remark}
+  对于 $e_j \equiv -1$（常数次对角元）的 Poisson/Helmholtz 三对角系统，
+  OER 退化为标准的 Thomas 算法（追赶法），
+  但 OER 的框架允许处理更一般的对称三对角系统（如 Neumann BC 中边界行的修改系数）。
+  在 FACR(l) 中，$l$ 步 OER 将 $N$ 行系统缩减为 $N/2^l$ 行，
+  然后对缩减系统使用 FA 方法（1D DST + 逐点求解）完成求解。
+\end{remark}
+
+\subsection{FACR 混合算法}
+
+\subsubsection{算法推导}
+
+FACR(l) 算法结合了 CR 和 FA 的优势。
+对~\eqref{eq:mode_tridiag}中的三对角系统执行 $l$ 步循环约化。
+
+\textbf{第 1 步 CR}：消去奇数行，将 $N$ 阶三对角系统缩减为 $N/2$ 阶。
+对相邻三个方程：
+\begin{align}
+  -\hat{u}_{p,j-1} + d_p \hat{u}_{p,j} - \hat{u}_{p,j+1} &= h^2 \hat{f}_{p,j} \quad (j \text{ 偶}) \\
+  -\hat{u}_{p,j} + d_p \hat{u}_{p,j+1} - \hat{u}_{p,j+2} &= h^2 \hat{f}_{p,j+1} \quad (j+1 \text{ 奇}) \\
+  -\hat{u}_{p,j+1} + d_p \hat{u}_{p,j+2} - \hat{u}_{p,j+3} &= h^2 \hat{f}_{p,j+2} \quad (j+2 \text{ 偶})
+\end{align}
+其中 $d_p = \lambda_p + h^2 k^2$。消去奇数行 $\hat{u}_{p,j+1}$：
+\begin{equation}
+  -\frac{1}{d_p}\hat{u}_{p,j-1} + \left(d_p - \frac{2}{d_p}\right)\hat{u}_{p,j+2} - \frac{1}{d_p}\hat{u}_{p,j+3}
+  = h^2\hat{f}_{p,j+2} - \frac{h^2\hat{f}_{p,j+1}}{d_p} - \frac{h^2\hat{f}_{p,j}}{d_p \cdot d_p}
+  \label{eq:cr_step}
+\end{equation}
+
+经过 $l$ 步后，系统规模缩减为 $N/2^l$，然后用 FA 方法（1D DST）求解剩余系统，
+最后逐步回代恢复所有未知量。
+
+\begin{theorem}[FACR 最优复杂度\cite{Swarztrauber1977}]
+  \label{thm:facr_complexity}
+  FACR(l) 的计算量由三部分组成：
+  \begin{enumerate}[itemsep=1pt]
+    \item $x$ 方向 1D DST：$O(N^2 \log N)$
+    \item $l$ 步 CR 前向消元 + 回代：$O(l \cdot N^2)$
+    \item 缩减后系统的 FA 求解：$O(N^2/2^l \cdot \log(N/2^l))$
+  \end{enumerate}
+  总计算量为 $C(l) = O(N^2 \log N) + O(l N^2) + O(N^2 (\log N - l)/2^l)$。
+
+  当 $l \approx \log_2(\log_2 N)$ 时，第三项趋于常数，总复杂度达到最优
+  $O(N^2 \log\log N)$。
+\end{theorem}
+
+\begin{algorithm}
+\caption{FACR(l) 混合算法}
+\begin{algorithmic}[1]
+\REQUIRE 网格大小 $n$，右端项 $f$，波数 $k^2$，CR 步数 $l$
+\ENSURE 解 $u$
+\STATE 对 $x$ 方向进行 1D DST-I 变换：$\hat{F} = \mathrm{DST}_x(F)$
+\FOR{$s = 1, \ldots, l$}
+  \STATE 对每个模式 $p$，执行 CR 前向消元（消去奇数行）
+  \STATE 更新偶数行的系数和右端项
+\ENDFOR
+\STATE 对缩减后的系统（$N/2^l$ 行）执行 FA（1D DST + 逐点求解）
+\FOR{$s = l, \ldots, 1$}
+  \STATE CR 回代：恢复被消去的奇数行
+\ENDFOR
+\STATE 对 $x$ 方向进行逆 DST-I 变换
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{FFT9 四阶紧致差分法}
+
+FFT9 方法将四阶紧致差分格式~\eqref{eq:compact-9pt}
+与 FFT 变换结合，在保持 $O(N^2 \log N)$ 计算量的同时达到 $O(h^4)$ 精度。
+
+\subsubsection{广义特征值问题的数学框架}
+
+紧致差分格式~\eqref{eq:compact-9pt}本质上是一个\textbf{广义特征值问题}。
+考虑其齐次形式 $(L_h - k^2 R_h)u = 0$，
+等价于寻找 $(\lambda, u)$ 满足 $L_h u = \lambda R_h u$，
+其中 $\lambda$ 为广义特征值。
+
+由引理~\ref{lem:fourier_eigenvalues}，$L_h$ 和 $R_h$ 在 Fourier 基下同时可对角化，
+因此广义特征值可逐模式解析计算：
+\begin{equation}
+  \lambda(p,q) = \frac{\hat{\lambda}_L(p,q)}{\hat{\lambda}_R(p,q)}
+  \label{eq:gen_eigenvalue}
+\end{equation}
+对于 Poisson 方程（$k^2 = 0$），有效离散算子为 $-L_h/R_h$，
+其特征值 $-\hat{\lambda}_L/\hat{\lambda}_R$ 逼近连续特征值 $\xi_p^2 + \eta_q^2$，
+逼近精度为 $O(h^4)$（定理~\ref{thm:4th_order}）。
+
+广义特征值问题的框架统一了五点格式和九点格式的频域分析：
+\begin{itemize}[itemsep=2pt]
+  \item 五点格式：$R_h = I$（平凡），$L_h = L_h^{(5)}$，特征值即 $\hat{\lambda}_5$
+  \item 九点格式：$R_h \neq I$，特征值为比值 $\hat{\lambda}_L/\hat{\lambda}_R$
+\end{itemize}
+这种统一视角表明，紧致差分法通过引入 $R_h$ 算子（非平凡的质量矩阵），
+在不扩大模板的前提下提升了特征值的逼近精度。
+
+\subsubsection{频域对角化的完整推导}
+
+紧致差分格式~\eqref{eq:compact-9pt}可写为矩阵形式：
+\begin{equation}
+  (L_h - k^2 R_h)\mathbf{u} = -R_h \mathbf{f}
+  \label{eq:compact_matrix}
+\end{equation}
+其中 $L_h$ 和 $R_h$ 均为 $(N \times N)$ 块三对角矩阵（$N = n-2$ 为内节点数）。
+
+\textbf{关键观察}：$L_h$ 和 $R_h$ 都可被 DST-I 同时对角化。
+事实上，$L_h$ 和 $R_h$ 具有共同的块结构：
+\begin{align}
+  L_h &= I \otimes T_L + T_L \otimes I + C_L \otimes C_L \\
+  R_h &= I \otimes T_R + T_R \otimes I
+\end{align}
+其中 $T_L$、$T_R$ 为三对角矩阵，$C_L$ 为对角矩阵。
+由于 $T_L$、$T_R$、$C_L$ 均与标准三对角矩阵 $T$（定义见定理~\ref{thm:eigenvalues}）
+共享 DST-I 特征基，$L_h$ 和 $R_h$ 可被二维 DST-I 变换 $\mathcal{F} = S \otimes S$ 同时对角化。
+
+将 $\mathcal{F}$ 作用于~\eqref{eq:compact_matrix}：
+\begin{align}
+  \mathcal{F}(L_h - k^2 R_h)\mathcal{F}^T \hat{\mathbf{u}} &= -\mathcal{F} R_h \mathcal{F}^T \hat{\mathbf{f}} \\
+  (\hat{\Lambda}_L - k^2 \hat{\Lambda}_R)\hat{\mathbf{u}} &= -\hat{\Lambda}_R \hat{\mathbf{f}}
+  \label{eq:freq_compact}
+\end{align}
+其中 $\hat{\Lambda}_L = \mathrm{diag}(\hat{\lambda}_L(p,q))$、
+$\hat{\Lambda}_R = \mathrm{diag}(\hat{\lambda}_R(p,q))$ 为对角矩阵，
+特征值由引理~\ref{lem:fourier_eigenvalues}给出。
+
+由于 $\hat{\Lambda}_L - k^2\hat{\Lambda}_R$ 是对角矩阵，
+方程~\eqref{eq:freq_compact}可逐模式求解：
+\begin{equation}
+  \hat{u}_{p,q} = \frac{-\hat{\lambda}_R(p,q)}{\hat{\lambda}_L(p,q) - k^2\hat{\lambda}_R(p,q)} \hat{f}_{p,q}
+  = \frac{\hat{f}_{p,q}}{-\hat{\lambda}_L(p,q)/\hat{\lambda}_R(p,q) + k^2}
+  \label{eq:fft9_freq}
+\end{equation}
+
+有效频域除数为：
+\begin{equation}
+  D_{p,q}^{(9)} = -\frac{\hat{\lambda}_L(p,q)}{\hat{\lambda}_R(p,q)} + k^2
+  \label{eq:fft9_divisor}
+\end{equation}
+由定理~\ref{thm:4th_order}，$D_{p,q}^{(9)} = (\xi_p^2+\eta_q^2+k^2) + O(h^4)$，
+因此频域求解的精度为 $O(h^4)$。
+
+\subsubsection{$R_h$ 算子对右端项的处理}
+
+在标准五点格式中，右端项直接取 $f_{i,j}$；
+而在紧致格式中，右端项需经过 $R_h$ 修正：$g_{i,j} = -R_h f_{i,j}$。
+
+对于齐次 Dirichlet 边界条件（$u|_{\partial\Omega} = 0$），
+$R_h f_{i,j}$ 仅涉及内节点值：
+\begin{equation}
+  g_{i,j} = -\left[\frac{1}{12}(f_{i-1,j}+f_{i+1,j}+f_{i,j-1}+f_{i,j+1}) + \frac{2}{3}f_{i,j}\right]
+\end{equation}
+
+对于非齐次 Dirichlet 边界条件（$u|_{\partial\Omega} = g_D$），
+$R_h$ 会将边界值传播到相邻内节点。
+例如，若 $(i,1)$ 为邻边界内节点（$j=0$ 为边界），
+则 $R_h f_{i,1}$ 中的 $f_{i,0}$ 项需要用边界信息修正：
+
+\begin{lemma}[$R_h$ 边界修正的频域等价]
+  \label{lem:Rh_boundary_freq}
+  在频域中，$R_h$ 对边界修正的影响可等价地视为对频域右端项 $\hat{g}$ 的附加贡献。
+  具体地，非齐次边界条件 $g_D$ 产生的额外频域源项为：
+  \begin{equation}
+    \Delta\hat{g}_{p,q} = -\hat{\lambda}_R(p,q)^{-1} \cdot \hat{b}_{p,q}
+  \end{equation}
+  其中 $\hat{b}_{p,q}$ 为边界贡献 $b_{i,j}$ 经 DST-I 变换后的频域表示。
+
+  该结论的关键在于：$R_h$ 对内节点值的修正（含边界传播）
+  在 DST-I 变换后等价于对频域右端项的线性修正，
+  不改变频域除数 $D_{p,q}^{(9)}$ 的结构。
+\end{lemma}
+\begin{equation}
+  \tilde{g}_{i,1} = g_{i,1} + \frac{k^2}{12}g_D(x_i, 0)
+  - \frac{1}{6h^2}\left[g_D(x_{i-1},0)+g_D(x_{i+1},0)+4g_D(x_i,0)\right]
+\end{equation}
+其中第一项来自 $k^2 R_h$ 中边界值的贡献，
+第二项来自 $L_h$ 中边界值产生的等效源项。
+
+\subsubsection{FFT9 与 FA/CR 方法的对比}
+
+FFT9 方法与 FA/CR 方法在频域求解框架上具有相同的结构，
+但存在本质区别：
+
+\begin{table}[H]
+\centering
+\caption{FFT9 与 FA/CR 频域求解的对比}
+\label{tab:fft9_vs_fa}
+\begin{tabular}{lccc}
+\toprule
+性质 & FA/CR & FFT9 \\
+\midrule
+差分格式 & 五点（$O(h^2)$） & 九点紧致（$O(h^4)$） \\
+频域除数 & $\lambda_p + \lambda_q + k^2$ & $-\hat{\lambda}_L/\hat{\lambda}_R + k^2$ \\
+右端项变换 & $\hat{f} = \mathcal{F}f$ & $\hat{g} = -\mathcal{F}(R_h f)$ \\
+计算量 & $O(N^2 \log N)$ & $O(N^2 \log N)$ \\
+精度 & $O(h^2)$ & $O(h^4)$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+两者的计算量相同（均为 2D DST-I 的 $O(N^2 \log N)$），
+但 FFT9 的频域除数更复杂（涉及 $\hat{\lambda}_L/\hat{\lambda}_R$ 的比值），
+且需要对右端项做 $R_h$ 修正（增加 $O(N^2)$ 的计算量，不改变渐近复杂度）。
+
+\subsubsection{FFT9 算法}
+
+\begin{algorithm}
+\caption{FFT9 四阶紧致差分法求解离散 Poisson/Helmholtz 方程（Dirichlet BC）}
+\begin{algorithmic}[1]
+\REQUIRE 网格大小 $n$，右端项 $f$，波数平方 $k^2$
+\ENSURE 解 $u$（$O(h^4)$ 精度）
+\STATE 计算修正右端项：$g_{i,j} = -R_h f_{i,j}$（含边界修正）
+\STATE 2D DST-I 变换：$\hat{g} = \mathrm{DST2D}(g)$
+\STATE 计算频域除数：$D_{p,q} = -\hat{\lambda}_L(p,q)/\hat{\lambda}_R(p,q) + k^2$
+\STATE 频域求解：$\hat{u}_{p,q} = \hat{g}_{p,q} / D_{p,q}$
+\STATE 逆 2D DST-I 变换：$U_{\mathrm{int}} = \mathrm{IDST2D}(\hat{u})$
+\STATE 组装完整解：填充边界值
+\end{algorithmic}
+\end{algorithm}
+
+FFT9 方法的计算量与 FA 方法相同，为 $O(N^2 \log N)$，
+但精度为 $O(h^4)$，比 FA/CR 的 $O(h^2)$ 提高了两个数量级。
+具体而言，要达到相同的精度 $\epsilon$，
+五点格式需要 $h = O(\epsilon^{1/2})$ 即 $N = O(\epsilon^{-1/2})$，
+而九点格式仅需 $h = O(\epsilon^{1/4})$ 即 $N = O(\epsilon^{-1/4})$，
+总计算量从 $O(\epsilon^{-1}\log\epsilon^{-1})$ 降至 $O(\epsilon^{-1/2}\log\epsilon^{-1/2})$。
+
+\subsection{复杂度分析与比较}
+
+\begin{table}[H]
+\centering
+\caption{各方法的理论复杂度比较}
+\label{tab:complexity}
+\begin{tabular}{lcccc}
+\toprule
+方法 & 复杂度 & 精度阶数 & 内存 & 边界条件 \\
+\midrule
+FA    & $O(N^2 \log N)$    & $O(h^2)$ & $O(N^2)$ & D, N, 混合 \\
+CR    & $O(N^2 \log N)$    & $O(h^2)$ & $O(N^2)$ & D, N, 混合 \\
+FACR  & $O(N^2 \log\log N)$ & $O(h^2)$ & $O(N^2)$ & D, N, 混合 \\
+FFT9  & $O(N^2 \log N)$    & $O(h^4)$ & $O(N^2)$ & D \\
+GMRES & $O(m N^2)$         & $O(h^2)$ & $O(mN)$  & D, N \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+其中 $m$ 为 GMRES 的总迭代次数。对于条件数为 $\kappa$ 的问题，
+GMRES 的迭代次数通常为 $m = O(\sqrt{\kappa}) = O(h^{-1})$，
+因此总复杂度为 $O(h^{-1} \cdot N^2) = O(N^{5/2})$，
+远高于 FFT 直接法的 $O(N^2 \log N)$。

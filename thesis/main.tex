@@ -1,0 +1,129 @@
+\documentclass[12pt,a4paper]{ctexart}
+
+% ============================================================
+% 宏包加载
+% ============================================================
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathrsfs}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{cite}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+
+% ============================================================
+% 页面设置
+% ============================================================
+\geometry{left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm}
+\setlength{\parindent}{2em}
+\setlength{\parskip}{0.5em}
+
+% ============================================================
+% 定理环境
+% ============================================================
+\newtheorem{theorem}{定理}[section]
+\newtheorem{lemma}[theorem]{引理}
+\newtheorem{proposition}[theorem]{命题}
+\newtheorem{corollary}[theorem]{推论}
+\newtheorem{definition}{定义}[section]
+\newtheorem{remark}{注}[section]
+
+% ============================================================
+% 代码样式
+% ============================================================
+\lstset{
+  language=Python,
+  basicstyle=\small\ttfamily,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  stringstyle=\color{red},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  frame=single,
+  breaklines=true,
+  captionpos=b
+}
+
+% ============================================================
+% 超链接设置
+% ============================================================
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
+
+% ============================================================
+% 标题信息
+% ============================================================
+\title{\textbf{矩形区域上 Poisson/Helmholtz 方程的 \\ FFT 快速求解器与迭代法对比研究}}
+\author{作者姓名 \\ 指导教师：导师姓名\ 教授}
+\date{\today}
+
+% ============================================================
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+本文研究矩形区域上 Poisson 方程和 Helmholtz 方程 $(-\nabla^2 + k^2)u = f$ 的快速数值求解方法。
+首先基于五点差分格式（二阶精度）和九点紧致差分格式（四阶精度）对方程进行离散，
+然后利用离散 Fourier 变换（DST/DCT）的对角化性质，实现了 Fourier Analysis (FA)、
+Cyclic Reduction (CR) 和 FACR 混合算法等基于 FFT 的快速直接求解器，
+其时间复杂度分别为 $O(N^2 \log N)$ 和 $O(N^2 \log\log N)$。
+对于 Helmholtz 方程，通过 $k^2$ 修正将 Poisson 求解器自然推广；
+对于 Neumann 边界条件，采用 ghost-point 方法配合对称化 DCT-I 变换实现高效求解。
+同时，本文实现了基于 Givens 旋转的 GMRES 迭代法，
+并在相同测试问题下与 FFT 直接法进行了系统的精度、效率和收敛性对比。
+数值实验表明：FFT 直接法在规则区域上具有效率优势，
+GMRES 迭代法则在可扩展性和预处理适应性方面更具潜力。
+
+\vspace{1em}
+\noindent\textbf{关键词：}Poisson 方程；Helmholtz 方程；快速 Fourier 变换；
+有限差分法；GMRES；循环约化；紧致差分格式；Neumann 边界条件
+\end{abstract}
+
+\newpage
+\tableofcontents
+\newpage
+
+% ============================================================
+% 各章节
+% ============================================================
+\include{chapters/1_introduction}
+\include{chapters/2_math_preliminary}
+\include{chapters/3_fft_direct}
+\include{chapters/4_helmholtz}
+\include{chapters/5_gmres}
+\include{chapters/6_experiments}
+\include{chapters/7_conclusion}
+
+% ============================================================
+% 参考文献
+% ============================================================
+\bibliographystyle{unsrt}
+\bibliography{references}
+
+% ============================================================
+% 致谢
+% ============================================================
+\newpage
+\section*{致谢}
+\addcontentsline{toc}{section}{致谢}
+
+感谢导师在论文选题和研究过程中的悉心指导，感谢同学在数值实验中的讨论与帮助。
+
+\end{document}

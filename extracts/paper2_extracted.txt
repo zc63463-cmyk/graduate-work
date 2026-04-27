@@ -1,0 +1,438 @@
+# PDF Extraction: 355853.355865.pdf
+
+Total pages: 5
+
+---
+
+## Page 1
+
+. 
+. 
+Latest updates: hps://dl.acm.org/doi/10.1145/355853.355865
+. 
+. 
+ARTICLE
+Algorithm 543: FFT9, Fast Solution of Helmholtz-
+Type Partial Diﬀerential Equations [D3]
+E. N. HOUSTIS, Purdue University, West Lafayee, IN, United
+States
+. 
+T. S. PAPATHEODOROU, Clarkson University, Potsdam, NY,
+United States
+. 
+. 
+. 
+Open Access Support provided by:
+. 
+Purdue University
+. 
+Clarkson University
+. 
+PDF Download
+355853.355865.pdf
+29 March 2026
+Total Citations: 8
+Total Downloads:
+539
+. 
+. 
+. 
+. 
+Published: 01 December
+1979
+. 
+. 
+Citation in BibTeX format
+. 
+. 
+ACM Transactions on Mathematical Soware (TOMS), Volume 5, Issue 4 (December 1979)
+hps://doi.org/10.1145/355853.355865
+EISSN: 1557-7295
+.
+
+
+## Page 2
+
+ALGORITHM 543 
+FFT9, Fast Solution of Helmholtz-Type 
+Partial Differential Equations [D3] 
+E. N. HOUSTIS 
+Purdue University 
+and 
+T. S. PAPATHEODOROU 
+Clarkson College of Technology 
+Key Words and Phrases' fast Fourier transform, fast Helmholtz solver, fast Poisson solver 
+CR Categor)es 5 17 
+Language: Fortran 
+DESCRIPTION 
+The algorithm given here is a complement to [1] where the description, test 
+results, and references are given. 
+REFERENCES 
+1. HousTIs, E.N., AND PAPATHEODOROU, T.S. High-order fast elliptic equatmn solver. ACM Trans. 
+Math. Software 5, 4 (Dec. 1979), 431-441. 
+ALGORITHM 
+[Summary information and part of the listing is printed here. The complete 
+listing is available from the ACM Algorithms Distribution Service (see inside 
+back cover for order form), or may be found in "Collected Algorithms from 
+ACM."] 
+NAME(n): indicates a Fortran module with n records 
+NAME w (n): indicates "NAME" is included for testing purposes 
+NAME D (n): indicates "NAME" contains test data 
+Contents: MAIN(299), RGHTSD(208), EQSOL(77), DISCRT(95), EV- 
+ENRD(55), ODDRD(54), CRED(76), STOREX(18), FETCHX(18), 
+Received 31 May 1977; revised 2 January 1979. 
+Permmsion to copy without fee all or part of this material is granted provided that the copies are not 
+made or distributed for direct commercial advantage, the ACM copyright notice and the title of the 
+pubhcation and its date appear, and notme is gwen that copying is by permission of the Association 
+for Computing Machinery. To copy otherwise, or to republish, requires a fee and/or specific 
+permission. 
+This work was supported m part by the National Science Foundation under Grant MCS 76-10225. 
+Authors' addresses" E. N. Houstls, Department of Computer Science, Purdue University, West 
+Lafayette, IN 47907; T. S. Papatheodorou, Department of Mathematics, Clarkson College of Tech- 
+nology, Potsdam, NY 13676. 
+© 1979 ACM 0098-3500/79/1200-0490 $00.75 
+ACM Transactions on Mathematmal Software, Vol. 5, No 4, December 1979, Pages 490-494. 
+
+
+## Page 3
+
+Algorithms • 491 
+KFOLD(138), FOUR(51), NEG(12), ZERO(13), 
+SETF(41), SUMARY(76), PDERGHT (7), 
+TRUE T (5), PDE T (9), DATA D (3) 
+TFOLD(16), 
+BCONDT(7), 
+PROGRAM FFT9(INPUT,OUTPUT,TAPE5fINPUT,TAPE6fOUTPUT) 
+.... PROGRAM DESCRIPTION .... 
+PROGRAM FFT9 USES A 4-TH OR 6-TH ORDER 9-POINT DIFFERENCE 
+FORMULA AND FAST FOURIER TRANSFORM FOR THE NUMERICAL 
+SOLUTION OF THE ELLIPTIC EQUATION WITH CONSTANT COEFFICIENTS 
+(I) CUXX*DDXU + CUYY*DDYU + CU*U = R 
+ON A RECTANGULAR REGION 0 .LE. X .LE. SX,0 .LE. Y .LE. SY 
+AND SUBJECT TO DIRICHLET BOUNDARY CONDITIONS 
+(II) u = c oN THE BOUSVARY 
+NOTE- THE 6-TH ORDER ALGORITHM IS APPLIED ONLY 
+TO POISSON TYPE OPERATORS 
+.... INPUT AND OUTPUT TO FFT9 .... 
+--PROBLEM DEFINITION-- USER SUPPLIED FORTRAN FUNCTION FOR THE 
+EVALUATION OF THE RIGHT SIDES (R,G) OF THE DIFFERENTIAL 
+AND BOUNDARY OPERATORS 
+REAL FUNCTION PDERGH (X,Y) 
+PDERGH - R 
+RETURN 
+END 
+REAL FUNCTION BCOND (I,X,Y, BVALUS) 
+TWO DIMENSIONS 
+VALUES OF BOUNDARY CONDITION ON SIDE I 
+AT (X,Y) 
+I-4 
+I I 
+I I 
+I-3 I REGION I I-i 
+I I 
+I I 
+I,,2 
+REAL BVALUS (4) 
+GO T0(1~,101,102,103) , I 
+101 BVALUS(4) = C 
+BCOND - BVALUS (4) 
+RETURN 
+102 BVALUS(4) - G 
+BCOND - BVALUS (4) 
+RETURN 
+103 BVALUS(4) ffi C 
+BCOND - BVALUS(4) 
+RETURN 
+104 BVALUS(4) - C 
+BCOND - BVALUS (4) 
+RETURN 
+10 
+20 
+30 
+40 
+50 60 
+70 
+80 
+90 
+100 
+110 
+120 
+130 
+140 
+150 
+160 
+170 
+180 
+190 
+2@ 
+210 
+220 
+230 
+240 
+25¢ 
+260 
+27¢ 
+28¢ 
+290 
+300 
+310 
+320 
+330 
+340 
+350 
+360 
+370 
+380 
+390 
+4~ 
+41¢ 
+420 
+43¢ 
+440 
+450 
+460 
+470 
+480 
+490 
+500 
+510 
+520 
+530 
+540 
+550 
+560 
+ACM Transactions on Mathematical Software, Vol. 5, No 4, December 1979. 
+
+
+## Page 4
+
+492 . Algorithms 
+END 
+USER SUPPLIED SUBROUTINE FOR THE DEFINITION OF 
+P.D.E CONSTANT COEFFICIENTS 
+SUBROUTINE PDE(X,Y,CVALUS) 
+REAL CVALUS (7) 
+CVALUS(1) - CUXX 
+CVALUS (3) - CUYY 
+CVALUS (6) - CU 
+RETURN 
+END 
+USER SUPPLIED FORTRAN FUNCTION FOR THE TRUE SOLUTION 
+IF KNOWN 
+REAL FUNCTION TRUE (X,Y) 
+TRUE - ... 
+RETURN 
+END 
+--REGION AND GRID SPECIFICATIONS-- 
+SX,SY 
+NGRIDX,NGRIDY 
+IQX,IQY 
+- LENGTHS OF SIDES OF RECTANGLE 
+- NUMBER OF HORIZONTAL AND 
+VERTICAL MESH LIMES 
+- EXPONENTS OF 2 
+NGRIDX-2**IQX+I,NGRIDY-2**IQY+I 
+READ(5,1~#) SX,SY,NGRIDX,NGRIDY 
+i~ FORMAT(2FI@.¢,213) 
+--OUTPUT CONTROL--USER SUPPLIED DATA 
+LEVEL - OUTPUT LEVEL DESIRED 
+NRUNS - NUMBER OF SUCCESIVE RUNS. 
+IN EACH RUN THE MESH SIZE IS 
+CUT BY A FACTOR OF 2. 
+ORDER - RATE OF CONVERGENCE DESIRED 
+READ(5, I~2) LEVEL,NRUNS,ORDER 
+i@2 FORMAT(312) 
+IF LEVEL - ~ PRINT APPROXIMATE SOLUTION AT NODES 
+- 1 PRINT MAXIMUMERKORANDMAXIMUM 
+RELATIVE ERROR PROVIDED TRUE SOLUTION 
+IS KNOWN 
+= 2 ALSO PRINT TRUE SOLUTION AND 
+APPROXIMATE SOLUTION AT ThE INTERIOR 
+GRID POINTS 
+IF ORDER - 4 CHOOSE A 4-TH ORDER DIFFERENCE APPR. TO (I) 
+- 6 CHOOSE A 6-TH ORDER DIFFERENCE APPR.TO (I) 
+--STORAGE--IT IS ASSUMED THAT 3 .LE. IXQ,IQY .LE. 7 . 
+IN CASE OF FINER MESH THE DIMENSIONS REQUIRED ARE 
+COMPUTED BY FORMirLAS GIVEN IN ARRAY LIST DESCRIPTION. 
+.... MAIN VARIABLES OF FFT9 .... 
+WORK 
+ORDER = 6 
+Z,Y 
+ORDER - 4 
+- WORKING SPACE OF DIMENSION 
+7+I@*MAX(NGRIDX,NGRIDY)+2*NGRIDX*NGRIDY 
+- ARRAYS USED IN THE FOURIER ANALYSIS-SYNTHESIS 
+7+I@*MAX(NGRIDX,NGRIDY)+NGRIDX*NGRIDY 
+ACM Transactions on MathemaUcal Software, Vol 5, No. 4, December 1979 
+57¢ 
+58¢ 
+59¢ 
+6¢¢ 
+61¢ 
+62¢ 
+63¢ 
+64¢ 
+65¢ 
+66@ 
+67¢ 
+68¢ 
+69¢ 
+7@ 
+71¢ 
+72¢ 
+73# 
+74¢ 
+75¢ 
+76@ 
+77@ 
+7S¢ 
+79¢ 
+8¢¢ 
+81¢ 
+82¢ 
+83¢ 
+84@ 
+85@ 
+86¢ 
+87¢ 
+88¢ 
+89@ 
+9@ 
+91¢ 
+92¢ 
+93¢ 
+94¢ 
+95¢ 
+96¢ 
+97¢ 
+98¢ 
+99@ 
+1¢1¢ 
+1~2¢ 
+1@3¢ 
+i¢4~ 
+1~5~ 
+1¢6¢ 
+1¢7¢ 
+1~9@ 
+iII~ 
+112¢ 
+113@ 
+114~ 
+115¢ 
+116~ 
+117@ 
+118~ 
+
+
+## Page 5
+
+Algorithms 493 
+DIMENSION OF 'Z,Y' IS NZD'NYD" MAX(NX,NY) 
+AKX(I+I)-THE I-TH EIGENVALUE OF THE DIAGONAL BLOCK DIVIDED BY 
+THE I-TH EIGENVALUE OF THE OFF DIAGONAL BLOCK 
+SQUARED MINUS 2 
+DIMENSION OF 'AKX' IS NAKXD ffi MAX(NX,NY)+2 
+CORE(K) - VALUE OF APPROXIMATE SOLUTION AT NODE K 
+DIMENSION OF 'CORE' IS NCORED " NX+2+(NX+I)*(NY+I) 
+PTINT( )- VALUES OF G AT HALF LATTICE POINTS 
+DIMENSION IS NPINTD s NX*NY 
+NOTE- ARRAY 'PTINT' IS NOT USED IN CASE ORDER .EQ. 4 
+GRIDX,GRIDY GRID COORDINATES 
+DIMENSION OF 'GRIDX,GRIDY' IS 
+NGRDXD- NX+I,NGRDYD - NY+I 
+SX,S¥ - LENGTHS OF RECTANGULAR REGION 
+ED(I+I) 
+INDEX 
+SI 
+- THE I-TH EIGENVALUE OF THE OFF DIAGONAL 
+BLOCK.DIMENSION OF 'ED' IS NEDD - MAX(NX,NY)+2 
+- INDEX VECTOR USED IN FFT ANALYSIS 
+DImeNSION IS INDEXD-MAX(NX,NY) 
+- SINES VECTOR FOR FFT ANALYSIS AND 
+SYNTHESIS. DIMENSION NSID - MAX(NX,NY) 
+.... COMMON VARIABLES OF FFT9 .... 
+COMMON /MESH/ 
+NX,NY 
+IMIN, IMAX 
+JMIN, JMAX 
+INC 
+IRO 
+IBCX 
+IQX 
+IBCY 
+IQY 
+HX,HY 
+HXY2 
+PI 
+POTFAC 
+COMMON /FDFORM/ 
+DLEFT 
+DIAG, OFFD 
+- NX - 2**IQX,NY - 2**IQY 
+- RANGE OF INTERIOR NODES IN X-DIRECTION 
+- RANGE OF INTERIOR NODES IN Y-DIRECTION 
+- INC - IMAX - IMIN + 3 
+- IRO - NX + 3 
+- IBCX " 1 
+- EXPONENT OF 2 
+- IBCYffi 1 
+- EXPONENT OF 2 
+- MESH SIZE 
+- HXY2 ffi (HX/HY)**2 
+- PI - 3.14... 
+- NORMALIZATION FACTOR - 2/NX 
+DIAGONAL ENTRY OF THE OFFDIAGONAL BLOCK 
+DIAGONAL AND OFFDIAGONAL ENTRIES OF THE 
+DIAGONAL BLOCK OF THE 9-POINT FORMULA 
+RF,HH,CH,RCI,FACTOR - CONSTANTS 
+119@ 
+12~ 
+121@ 
+122@ 
+123@ 
+124@ 
+125@ 
+126@ 
+127@ 
+128@ 
+129@ 
+13@@ 
+131@ 
+132@ 
+133@ 
+134@ 
+135@ 
+136@ 
+137@ 
+138@ 
+139@ 
+14@@ 
+141@ 
+142@ 
+143@ 
+144@ 
+145@ 
+146@ 
+147@ 
+148@ 
+149@ 
+15~ 
+151@ 
+152@ 
+153@ 
+154@ 
+155@ 
+156@ 
+157@ 
+158@ 
+159@ 
+16@@ 
+161@ 
+1620 
+163@ 
+1640 
+165@ 
+ACM Transactions on Mathematical Software, Voi 5, No. 4, December 1979. 
+
+

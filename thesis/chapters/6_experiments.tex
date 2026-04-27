@@ -1,0 +1,625 @@
+% ============================================================
+% 第六章 数值实验
+% ============================================================
+\section{数值实验}
+\label{sec:experiments}
+
+本章通过系统的数值实验验证所提算法的正确性和有效性。
+所有实验在 Python 3.x + NumPy + SciPy 环境下完成，
+测试问题为矩形区域 $\Omega = [0,1]^2$ 上的 Helmholtz 方程
+$(-\nabla^2 + k^2)u = f$。
+
+\subsection{测试问题}
+
+\subsubsection{Dirichlet 边界条件}
+
+取精确解 $u(x,y) = \sin(\pi x)\sin(\pi y)$，
+对应的右端项为
+\begin{equation}
+  f(x,y) = (2\pi^2 + k^2)\sin(\pi x)\sin(\pi y),
+\end{equation}
+边界值为零，满足齐次 Dirichlet 边界条件。
+
+\subsubsection{Neumann 边界条件}
+
+取精确解 $u(x,y) = \cos(\pi x)\cos(\pi y)$，
+对应的右端项为
+\begin{equation}
+  f(x,y) = (2\pi^2 + k^2)\cos(\pi x)\cos(\pi y),
+\end{equation}
+边界法向导数为零，满足齐次 Neumann 边界条件。
+
+\subsection{实验一：收敛阶验证}
+
+本实验验证各求解器的理论收敛阶。取 $k^2 = 10$，
+网格大小 $n = 9, 17, 33, 65, 129$，
+使用 Dirichlet 边界条件的测试问题。
+
+\subsubsection{二阶格式（五点差分）}
+
+FA、CR、FACR 三种求解器均基于五点差分格式，理论收敛阶为 $O(h^2)$。
+表~\ref{tab:conv_2nd} 列出了各求解器在不同网格下的最大误差和收敛阶。
+
+\begin{table}[htbp]
+\centering
+\caption{二阶格式收敛率验证（$k^2 = 10$，Dirichlet BC）}
+\label{tab:conv_2nd}
+\begin{tabular}{ccccccc}
+\toprule
+ & \multicolumn{2}{c}{FA} & \multicolumn{2}{c}{CR} & \multicolumn{2}{c}{FACR} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}
+$n$ & 误差 & 阶 & 误差 & 阶 & 误差 & 阶 \\
+\midrule
+9  & 8.56e-3 & --   & 8.56e-3 & --   & 8.56e-3 & --   \\
+17 & 2.13e-3 & 2.00 & 2.13e-3 & 2.00 & 2.13e-3 & 2.00 \\
+33 & 5.33e-4 & 2.00 & 5.33e-4 & 2.00 & 5.33e-4 & 2.00 \\
+65 & 1.33e-4 & 2.00 & 1.33e-4 & 2.00 & 1.33e-4 & 2.00 \\
+129& 3.33e-5 & 2.00 & 3.33e-5 & 2.00 & 3.33e-5 & 2.00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+实验结果表明，FA、CR、FACR 三种方法在相同网格下产生完全一致的数值解，
+收敛阶均精确为 $2.00$，与二阶差分格式的理论预期完全吻合。
+
+\subsubsection{四阶格式（FFT9 紧致差分）}
+
+FFT9 求解器基于九点紧致差分格式，理论收敛阶为 $O(h^4)$。
+表~\ref{tab:conv_4th} 列出了 FFT9 在不同网格下的误差和收敛阶。
+
+\begin{table}[htbp]
+\centering
+\caption{四阶格式收敛率验证（$k^2 = 10$，Dirichlet BC）}
+\label{tab:conv_4th}
+\begin{tabular}{ccc}
+\toprule
+$n$ & 误差 & 收敛阶 \\
+\midrule
+9  & 4.34e-5 & --   \\
+17 & 2.73e-6 & 3.99 \\
+33 & 1.71e-7 & 4.00 \\
+65 & 1.07e-8 & 4.00 \\
+129& 6.69e-10 & 4.00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+FFT9 的收敛阶精确为 $4.00$，与四阶紧致差分格式的理论预期一致。
+在相同网格下，FFT9 的精度显著高于五点差分格式：
+例如在 $n = 65$ 时，FFT9 的误差约为 $1.07 \times 10^{-8}$，
+而五点差分的误差约为 $1.33 \times 10^{-4}$，
+精度提升了约四个数量级。
+
+图~\ref{fig:convergence_rates} 展示了各求解器的误差随网格间距的变化趋势，
+可以清晰地看到二阶方法和四阶方法的不同斜率。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/convergence_rates.png}
+\caption{各求解器收敛阶验证（$k^2 = 10$，Dirichlet BC）}
+\label{fig:convergence_rates}
+\end{figure}
+
+\subsection{实验二：直接求解器精度对比}
+
+表~\ref{tab:accuracy} 对比了四种直接求解器在不同网格下的精度。
+取 $k^2 = 10$，Dirichlet 边界条件。
+
+\begin{table}[htbp]
+\centering
+\caption{直接求解器精度对比（$k^2 = 10$，Dirichlet BC）}
+\label{tab:accuracy}
+\begin{tabular}{ccccc}
+\toprule
+$n$ & FA & CR & FACR & FFT9 \\
+\midrule
+9  & 8.56e-3 & 8.56e-3 & 8.56e-3 & 4.34e-5 \\
+17 & 2.13e-3 & 2.13e-3 & 2.13e-3 & 2.73e-6 \\
+33 & 5.33e-4 & 5.33e-4 & 5.33e-4 & 1.71e-7 \\
+65 & 1.33e-4 & 1.33e-4 & 1.33e-4 & 1.07e-8 \\
+129& 3.33e-5 & 3.33e-5 & 3.33e-5 & 6.69e-10 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+FA、CR、FACR 三种方法基于相同的五点差分格式，
+因此产生完全一致的数值解（误差差异在机器精度范围内）。
+FFT9 基于九点紧致差分格式，精度远高于其余三种方法。
+值得注意的是，FFT9 在 $n = 129$ 时的误差已达到 $6.69 \times 10^{-10}$，
+接近机器精度，而五点差分方法仅能达到 $3.33 \times 10^{-5}$。
+
+\subsection{实验三：GMRES 收敛行为分析}
+
+本实验分析 GMRES 迭代法在不同参数下的收敛行为。
+采用多项式测试问题 $u = x^2(1-x)^2 y^2(1-y)^2$，
+该问题不对应离散 Laplacian 的单一特征模态，
+因此能够真实反映 GMRES 的迭代收敛行为~\cite{Niu2009}。
+
+\subsubsection{不同波数下的收敛性}
+
+固定网格 $n = 33$，取 $k^2 = 0, 1, 10, 100, 1000$，
+观察 GMRES(30) 的收敛曲线，结果如图~\ref{fig:gmres_convergence} 左图所示。
+
+随着波数 $k$ 的增大，GMRES 的收敛速度呈现以下规律：
+\begin{itemize}
+  \item $k^2 = 0$（Poisson 方程）和较小的 $k^2$：收敛最慢，需要最多的迭代次数；
+  \item $k^2 = 100, 1000$：收敛明显加快，迭代次数显著减少。
+\end{itemize}
+
+这是因为较大的 $k^2$ 使得矩阵 $A = -\nabla^2 + k^2 I$ 更加对角占优，
+条件数改善（$\kappa(A) = (\lambda_{\max} + k^2)/(\lambda_{\min} + k^2) \to 1$），
+Krylov 子空间方法更容易逼近解。
+
+\subsubsection{不同网格下的收敛性}
+
+固定 $k^2 = 10$，取 $n = 17, 33, 65, 129$，
+结果如图~\ref{fig:gmres_convergence} 右图所示。
+
+随着网格加密，GMRES 所需迭代次数显著增加，
+这是因为五点差分矩阵的条件数随 $h^{-2}$ 增长，
+Krylov 子空间方法在高维空间中需要更多迭代来收敛。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/gmres_convergence.png}
+\caption{GMRES 收敛行为分析：左图为不同波数（$n=33$），右图为不同网格（$k^2=10$）}
+\label{fig:gmres_convergence}
+\end{figure}
+
+\subsubsection{GMRES 收敛阶验证}
+
+表~\ref{tab:gmres_conv} 验证了 GMRES 求解 Helmholtz 方程的收敛阶。
+取 $k^2 = 10$，Dirichlet 边界条件，容差 $\varepsilon = 10^{-12}$，
+采用多项式测试问题 $u = x^2(1-x)^2 y^2(1-y)^2$。
+
+\begin{table}[htbp]
+\centering
+\caption{GMRES 收敛阶验证（$k^2 = 10$，Dirichlet BC，多项式测试问题）}
+\label{tab:gmres_conv}
+\begin{tabular}{cccc}
+\toprule
+$n$ & 误差 & 收敛阶 & 迭代次数 \\
+\midrule
+9  & 1.43e-4  & --   & 9      \\
+17 & 3.57e-5  & 2.00 & 31     \\
+33 & 8.92e-6  & 2.00 & 150    \\
+65 & 2.23e-6  & 2.00 & 732    \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+GMRES 的收敛阶为 $2.00$，与五点差分格式的理论精度一致。
+与直接法不同，GMRES 的迭代次数随问题规模显著增加：
+从 $n=9$ 时的 9 次迭代增长到 $n=65$ 时的 732 次迭代，
+反映了无预处理 GMRES 在大规模 Helmholtz 问题上的固有局限性。
+
+\subsection{实验四：直接法与迭代法效率对比}
+
+本实验对比 FFT 直接法与 GMRES 迭代法的计算时间和精度。
+取 $k^2 = 10$，Dirichlet 边界条件，网格 $n = 33, 65, 129, 257$。
+直接法使用特征函数测试问题 $u = \sin(\pi x)\sin(\pi y)$，
+GMRES 使用多项式测试问题 $u = x^2(1-x)^2 y^2(1-y)^2$
+以获得真实的迭代行为。
+
+表~\ref{tab:efficiency_time} 列出了各求解器的计算时间，
+表~\ref{tab:efficiency_accuracy} 列出了对应的精度。
+
+\begin{table}[htbp]
+\centering
+\caption{计算时间对比（ms，$k^2 = 10$，Dirichlet BC）}
+\label{tab:efficiency_time}
+\begin{tabular}{cccccc}
+\toprule
+$n$ & FA & CR & FACR & FFT9 & GMRES(30) \\
+\midrule
+33  & 3.2  & 3.9  & 2.7  & 5.5  & 39.7    \\
+65  & 4.6  & 13.3 & 7.0  & 17.7 & 343.5   \\
+129 & 10.7 & 43.7 & 16.7 & 46.1 & 23361.4 \\
+257 & 40.2 & 233.4& 67.7 & 175.4& 91709.1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{精度对比（最大误差，$k^2 = 10$，Dirichlet BC）}
+\label{tab:efficiency_accuracy}
+\begin{tabular}{cccccc}
+\toprule
+$n$ & FA & CR & FACR & FFT9 & GMRES(30) \\
+\midrule
+33  & 5.33e-4 & 5.33e-4 & 5.33e-4 & 1.71e-7 & 8.92e-6 \\
+65  & 1.33e-4 & 1.33e-4 & 1.33e-4 & 1.07e-8 & 2.23e-6 \\
+129 & 3.33e-5 & 3.33e-5 & 3.33e-5 & 6.69e-10 & 5.57e-7 \\
+257 & 8.33e-6 & 8.33e-6 & 8.33e-6 & 4.18e-11 & 1.39e-7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+从表中可以得出以下结论：
+
+\begin{enumerate}
+  \item \textbf{计算时间}：FFT 直接法的计算时间远小于 GMRES 迭代法。
+        在 $n = 129$ 时，FA 仅需约 11ms，而 GMRES(30) 需要约 23 秒，
+        差距超过 2000 倍。
+        在 $n = 257$ 时，GMRES(30) 更是需要超过 91 秒，
+        而 FACR 仅需约 68ms。
+        这是因为 GMRES 的迭代次数随问题规模急剧增长
+        （$n=33$: 150次, $n=65$: 732次, $n=129$: 约4000次），
+        而每次迭代需要进行矩阵-向量乘积 $O(N^2)$。
+
+  \item \textbf{精度}：FA、CR、FACR 基于五点差分格式，精度一致；
+        FFT9 基于四阶紧致差分格式，精度远高于其他方法；
+        GMRES 也基于五点差分格式，收敛阶为 $O(h^2)$，与直接法一致。
+
+  \item \textbf{规模增长}：GMRES 的计算时间增长速度远快于 FFT 直接法。
+        从 $n=33$ 到 $n=257$，FA 的时间增长约 12 倍（符合 $O(N^2 \log N)$），
+        而 GMRES 的时间增长约 2300 倍，体现了迭代法在大规模问题上的固有劣势。
+        FACR 在中等规模问题上表现最优，体现了其 $O(N^2 \log\log N)$ 的理论优势。
+\end{enumerate}
+
+图~\ref{fig:efficiency} 直观展示了直接法与迭代法在时间和精度上的对比。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/efficiency_comparison.png}
+\caption{直接法与迭代法效率对比：左图为计算时间，右图为精度}
+\label{fig:efficiency}
+\end{figure}
+
+\subsection{实验五：不同波数的影响}
+
+本实验考察不同波数 $k$ 对求解效果的影响。
+取 $n = 33, 65, 129$，$k^2 = 0, 1, 10, 100, 1000$，
+使用 Dirichlet 边界条件。
+
+\subsubsection{FA 直接求解器}
+
+表~\ref{tab:wavenumber_fa} 列出了 FA 直接求解器在不同波数下的精度。
+
+\begin{table}[htbp]
+\centering
+\caption{FA 直接求解器在不同波数下的精度（Dirichlet BC）}
+\label{tab:wavenumber_fa}
+\begin{tabular}{cccc}
+\toprule
+$k^2$ & $n = 33$ & $n = 65$ & $n = 129$ \\
+\midrule
+0    & 8.04e-4 & 2.01e-4 & 5.02e-5 \\
+1    & 7.65e-4 & 1.91e-4 & 4.78e-5 \\
+10   & 5.33e-4 & 1.33e-4 & 3.33e-5 \\
+100  & 1.32e-4 & 3.31e-5 & 8.28e-6 \\
+1000 & 1.55e-5 & 3.89e-6 & 9.72e-7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+对于所有测试的波数值，FA 直接求解器均保持了二阶收敛精度，
+且精度随着波数增大反而略有提高。
+这是因为当 $k^2$ 较大时，离散 Helmholtz 算子的特征值 $\lambda_{p,q} + k^2$
+远离零点，算子的条件数反而改善，不会出现共振问题。
+这体现了 FFT 直接法的一个重要优势：只要离散算子非奇异（不触及共振频率），
+求解精度与波数无关。
+
+\subsubsection{GMRES 迭代次数}
+
+表~\ref{tab:wavenumber_gmres} 列出了 GMRES(30) 在不同波数下所需的迭代次数。
+测试采用多项式问题 $u = x^2(1-x)^2 y^2(1-y)^2$，
+该问题激发离散系统的多个特征模态，能够真实反映 GMRES 的迭代行为。
+
+\begin{table}[htbp]
+\centering
+\caption{GMRES(30) 在不同波数下的迭代次数（Dirichlet BC，多项式测试问题，容差 $10^{-10}$）}
+\label{tab:wavenumber_gmres}
+\begin{tabular}{cccc}
+\toprule
+$k^2$ & $n = 33$ & $n = 65$ & $n = 129$ \\
+\midrule
+0    & 149  & 784  & 2875  \\
+1    & 147  & 772  & 2752  \\
+10   & 130  & 613  & 1992  \\
+100  & 77   & 206  & 620   \\
+1000 & 31   & 70   & 158   \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+与直接法不同，GMRES 的迭代次数随波数呈现有趣的规律：
+当 $k^2$ 较小时，Helmholtz 矩阵 $A = -\nabla_h^2 + k^2 I$ 的条件数较大，
+GMRES 需要较多迭代；当 $k^2$ 增大时，对角占优程度增强，条件数改善，迭代次数反而减少。
+具体而言，$k^2 = 0$（Poisson 方程）时条件数最大，$n=129$ 需要 2875 次迭代；
+而 $k^2 = 1000$ 时仅需 158 次迭代，减少了约 18 倍。
+
+这体现了 Helmholtz 方程中大波数问题的双重性：
+虽然条件数改善有利于迭代法收敛，但高频解的离散化精度仍需要更密的网格
+（每个波长需足够采样点），否则会出现数值频散（pollution effect）。
+
+图~\ref{fig:wavenumber} 展示了不同波数下 GMRES 的收敛曲线对比。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/wavenumber_effects.png}
+\caption{不同波数下 GMRES 收敛行为（$n = 65$，Dirichlet BC）}
+\label{fig:wavenumber}
+\end{figure}
+
+\subsection{实验六：Neumann 边界条件}
+
+本实验验证 Neumann 边界条件下的求解效果。
+取 $k^2 = 1$，使用 ghost-point 对称化 DCT-I 方法。
+
+\subsubsection{FFT 直接法}
+
+表~\ref{tab:neumann_fft} 列出了 FA、CR、FACR 在 Neumann 边界条件下的收敛结果。
+
+\begin{table}[htbp]
+\centering
+\caption{FFT 直接法 Neumann 边界条件收敛率（$k^2 = 1$）}
+\label{tab:neumann_fft}
+\begin{tabular}{ccccccc}
+\toprule
+ & \multicolumn{2}{c}{FA} & \multicolumn{2}{c}{CR} & \multicolumn{2}{c}{FACR} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}
+$n$ & 误差 & 阶 & 误差 & 阶 & 误差 & 阶 \\
+\midrule
+9  & 1.23e-2 & --   & 1.23e-2 & --   & 1.23e-2 & --   \\
+17 & 3.06e-3 & 2.01 & 3.06e-3 & 2.01 & 3.06e-3 & 2.01 \\
+33 & 7.65e-4 & 2.00 & 7.65e-4 & 2.00 & 7.65e-4 & 2.00 \\
+65 & 1.91e-4 & 2.00 & 1.91e-4 & 2.00 & 1.91e-4 & 2.00 \\
+129& 4.78e-5 & 2.00 & 4.78e-5 & 2.00 & 4.78e-5 & 2.00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+三种方法在 Neumann 边界条件下的收敛阶均精确为 $2.00$，
+与理论预期一致。Ghost-point 对称化 DCT-I 方法有效地将 Neumann 边界条件
+纳入了 FFT 框架，无需额外的边界处理步骤。
+
+图~\ref{fig:neumann} 展示了 Neumann 边界条件下各求解器的收敛行为。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/neumann_convergence.png}
+\caption{Neumann 边界条件收敛率（$k^2 = 1$）}
+\label{fig:neumann}
+\end{figure}
+
+\subsubsection{GMRES 迭代法}
+
+表~\ref{tab:neumann_gmres} 列出了 GMRES 在 Neumann 边界条件下的收敛结果。
+测试采用多项式测试问题 $u = x^2(1-x)^2 y^2(1-y)^2$，
+该问题在边界上满足齐次 Neumann 条件。
+
+\begin{table}[htbp]
+\centering
+\caption{GMRES Neumann 边界条件（$k^2 = 1$，多项式测试问题，容差 $10^{-10}$）}
+\label{tab:neumann_gmres}
+\begin{tabular}{cccc}
+\toprule
+$n$ & 误差 & 收敛阶 & 迭代次数 \\
+\midrule
+9  & 2.29e-3 & --   & 13  \\
+17 & 5.75e-4 & 1.99 & 61  \\
+33 & 1.44e-4 & 2.00 & 711 \\
+65 & 3.60e-5 & 2.00 & 8067 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+GMRES 在 Neumann 边界条件下的收敛阶为 $2.00$，
+与五点差分格式的理论精度一致。
+然而，Neumann 问题下 GMRES 的迭代次数增长极为迅速：
+从 $n=33$ 的 711 次激增到 $n=65$ 的 8067 次，
+远超 Dirichlet 条件下的 732 次。
+这是因为 Neumann 离散矩阵具有零特征值（对应常数模式），
+条件数比 Dirichlet 情况更差，导致 GMRES 收敛缓慢。
+
+\subsection{实验结果总结}
+
+通过上述六个实验，可以得出以下主要结论：
+
+\begin{enumerate}
+  \item \textbf{收敛阶验证}：五点差分格式的收敛阶为 $O(h^2)$，
+        九点紧致差分格式的收敛阶为 $O(h^4)$，均与理论预期完全吻合。
+
+  \item \textbf{方法等价性}：FA、CR、FACR 三种 FFT 直接法在相同差分格式下
+        产生完全一致的数值解，区别仅在计算效率上。
+        FACR 在中等规模问题上效率最优。
+
+  \item \textbf{FFT 直接法效率优势}：在规则矩形区域上，
+        FFT 直接法的时间复杂度远优于 GMRES 迭代法，
+        且不存在收敛性问题。
+        FA 和 FACR 在大规模问题上的优势尤为明显。
+
+  \item \textbf{GMRES 的规模敏感性}：GMRES 迭代次数随问题规模增大而急剧增加，
+        在多项式测试问题下，$n=33$ 时需 150 次迭代，$n=65$ 时需 732 次，$n=129$ 时需约 4000 次。
+        重启策略 GMRES(30) 在大规模问题上的计算时间远超 FFT 直接法
+        （$n=257$: GMRES 约 92 秒 vs FA 约 40 毫秒，差距超过 2000 倍）。
+
+  \item \textbf{波数影响}：FFT 直接法不受波数影响（只要不触及共振），
+        甚至在大波数下条件数改善而精度略有提高；
+        GMRES 的收敛速度在大波数下反而加快，
+        因为 $k^2$ 增大使矩阵更对角占优
+        （$k^2=0$: 2875次迭代 vs $k^2=1000$: 158次迭代，$n=129$）。
+
+  \item \textbf{Neumann 边界条件}：Ghost-point 对称化 DCT-I 方法
+        成功将 Neumann 边界条件纳入 FFT 直接法框架，
+        保持了二阶收敛精度，与 Dirichlet 边界条件的处理同样优雅高效。
+\end{enumerate}
+
+\subsection{实验七：误差分布可视化}
+
+本实验通过误差热力图和三维曲面图直观展示各求解器的误差分布特征。
+
+\subsubsection{解与误差热力图}
+
+图~\ref{fig:error_heatmaps} 展示了 $n = 65$、$k^2 = 10$ 时
+精确解、FA 数值解以及两种方法的逐点误差分布。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/error_heatmaps.png}
+\caption{解与误差热力图（$n=65$，$k^2=10$，Dirichlet BC）：左上为精确解，右上为 FA 解，左下为 FA 对数误差，右下为 FFT9 对数误差}
+\label{fig:error_heatmaps}
+\end{figure}
+
+从热力图中可以观察到：
+\begin{itemize}[itemsep=2pt]
+  \item FA 的误差在区域中心最大，向边界递减，
+        这是因为五点差分格式在边界处有 Dirichlet 条件约束；
+  \item FFT9 的误差比 FA 小约四个数量级，且分布模式更加均匀；
+  \item 两种方法的误差均呈现"钟形"分布，
+        与差分格式截断误差的 Fourier 分析结论一致。
+\end{itemize}
+
+\subsubsection{网格加密下的误差演化}
+
+图~\ref{fig:error_grid_refinement} 展示了不同网格尺度下 FA 的误差分布变化，
+可以清晰看到随网格加密误差的均匀减小。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/error_grid_refinement.png}
+\caption{不同网格尺度下 FA 误差分布（$k^2=10$，Dirichlet BC）}
+\label{fig:error_grid_refinement}
+\end{figure}
+
+\subsubsection{三维解曲面}
+
+图~\ref{fig:solution_surface} 以三维曲面形式展示了精确解、FA 数值解和放大后的误差分布。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/solution_surface.png}
+\caption{三维解曲面与误差分布（$n=65$，$k^2=10$，Dirichlet BC）}
+\label{fig:solution_surface}
+\end{figure}
+
+\subsection{实验八：条件数分析}
+
+矩阵条件数是影响迭代法收敛速度的关键因素。
+由推论~\ref{cor:condition_number}，五点差分矩阵的条件数为 $O(h^{-2})$。
+
+图~\ref{fig:condition_number} 展示了不同波数下条件数随网格间距的变化。
+可以观察到：
+\begin{itemize}[itemsep=2pt]
+  \item 当 $k^2 = 0$（Poisson 方程）时，条件数严格遵循 $O(h^{-2})$ 增长；
+  \item 当 $k^2 > 0$ 时，条件数仍以 $O(h^{-2})$ 增长，但常数因子更小；
+  \item 当 $k^2$ 较大时，$\lambda_{\min} \approx k^2 > 0$，
+        条件数在粗网格上反而较小，这与实验五中 FA 精度随 $k^2$ 增大而提高的现象一致。
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/condition_number.png}
+\caption{条件数随网格间距的变化（Dirichlet BC）}
+\label{fig:condition_number}
+\end{figure}
+
+\subsection{实验九：FACR(l) 参数研究}
+
+FACR(l) 算法的性能依赖于循环约化步数 $l$ 的选择。
+由定理~\ref{thm:facr_complexity}，最优 $l \approx \log_2(\log_2 N)$。
+
+图~\ref{fig:facr_parameter} 和下表展示了不同 $l$ 值下 FACR 的计算时间。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/facr_parameter.png}
+\caption{FACR(l) 性能随 CR 步数 $l$ 的变化（$k^2=10$，Dirichlet BC）}
+\label{fig:facr_parameter}
+\end{figure}
+
+实验结果表明：
+\begin{itemize}[itemsep=2pt]
+  \item 对小网格（$n \leq 65$），$l = 0$（即纯 FA）已是最优选择，
+        CR 步骤引入的开销大于收益；
+  \item 对中等网格（$n = 129 \sim 257$），$l = 1 \sim 2$ 开始显现优势；
+  \item 对大网格（$n \geq 513$），$l = 2 \sim 3$ 可带来约 2 倍的加速，
+        与理论预测 $l_{\mathrm{opt}} \approx \log_2(\log_2 N)$ 一致。
+\end{itemize}
+
+\subsection{实验十：GMRES 重启参数敏感性}
+
+重启参数 $m$ 是 GMRES(m) 算法的关键超参数。
+图~\ref{fig:gmres_restart} 分析了不同 $m$ 值对收敛速度的影响。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/gmres_restart.png}
+\caption{GMRES(m) 重启参数敏感性分析：左图为收敛曲线，右图为总迭代次数 vs $m$}
+\label{fig:gmres_restart}
+\end{figure}
+
+从图中可以观察到：
+\begin{itemize}[itemsep=2pt]
+  \item $m$ 越大，收敛曲线越平滑，重启造成的残差"跳跃"越小；
+  \item 总迭代次数随 $m$ 增大而减少，但减少幅度逐渐变小（边际效应递减）；
+  \item 对于 $n = 129$，$m = 100$ 相比 $m = 10$ 可减少约 50\% 的迭代次数，
+        但每次迭代的正交化开销也增大了 10 倍，实际加速效果有限。
+\end{itemize}
+
+\subsection{实验十一：复杂度标度验证}
+
+本实验通过实测计算时间验证各方法的理论复杂度。
+图~\ref{fig:complexity_scaling} 展示了 FA、CR、FACR 三种方法的计算时间随问题规模的变化。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/complexity_scaling.png}
+\caption{复杂度标度验证：计算时间 vs 问题规模（$k^2=10$）}
+\label{fig:complexity_scaling}
+\end{figure}
+
+实测曲线与 $O(N^2 \log N)$ 理论参考线吻合良好，
+验证了 FA、CR 方法的理论复杂度。
+FACR 在大规模问题上的优势也可以观察到。
+
+\subsection{实验十二：复杂测试问题}
+
+前面的实验均使用单模态精确解 $u = \sin(\pi x)\sin(\pi y)$。
+本实验使用含多个频率分量的复杂精确解：
+\begin{equation}
+  u(x,y) = \sin(\pi x)\sin(\pi y) + 0.5\sin(2\pi x)\sin(3\pi y) + 0.3\sin(5\pi x)\sin(4\pi y)
+\end{equation}
+
+多模态测试问题的意义在于：
+\begin{itemize}[itemsep=2pt]
+  \item 验证求解器对高频分量的分辨能力；
+  \item 更接近实际问题中右端项的一般性；
+  \item 高频分量的离散化误差更大，可以更充分地暴露方法特性。
+\end{itemize}
+
+实验结果（图~\ref{fig:complex_test_heatmap}）表明，
+FA 和 FFT9 的收敛阶在多模态问题下仍分别保持 $O(h^2)$ 和 $O(h^4)$，
+但绝对误差比单模态问题大约一个数量级，
+这是因为高频分量 $(5\pi, 4\pi)$ 的离散化需要更细的网格才能精确分辨。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/complex_test_heatmap.png}
+\caption{复杂测试问题：精确解与误差热力图（$n=65$，$k^2=10$，Dirichlet BC）}
+\label{fig:complex_test_heatmap}
+\end{figure}
+
+\subsection{实验十三：波数-网格精度热力图}
+
+图~\ref{fig:wavenumber_heatmap} 以热力图形式全面展示了
+FA 求解器的精度随波数 $k^2$ 和网格大小 $n$ 的变化关系。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/wavenumber_heatmap.png}
+\caption{FA 求解器精度随波数和网格大小的变化（$\log_{10}$ 最大误差，Dirichlet BC）}
+\label{fig:wavenumber_heatmap}
+\end{figure}
+
+热力图清晰地揭示了以下规律：
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{纵向}（固定 $k^2$，加密网格）：误差以 $O(h^2)$ 速率下降，
+        与理论预期一致；
+  \item \textbf{横向}（固定网格，增大 $k^2$）：误差先减小后趋于稳定，
+        这是因为 $k^2$ 增大改善了条件数，但离散化精度不变；
+  \item \textbf{对角线}：保持 $kh$ 恒定时，误差基本一致，
+        证实了"每个波长需足够采样点"的经验法则。
+\end{itemize}

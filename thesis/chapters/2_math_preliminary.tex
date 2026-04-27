@@ -1,0 +1,600 @@
+% ============================================================
+% 第二章 数学基础与差分格式
+% ============================================================
+\section{数学基础与差分格式}
+\label{sec:math}
+
+\subsection{Poisson 方程与 Helmholtz 方程}
+
+考虑矩形区域 $\Omega = [0, L_x] \times [0, L_y]$ 上的椭圆型方程：
+\begin{equation}
+  \mathcal{L}u \equiv (-\nabla^2 + k^2)u = f, \quad (x,y) \in \Omega
+  \label{eq:helmholtz}
+\end{equation}
+其中 $k^2 \geq 0$ 为波数的平方。当 $k^2 = 0$ 时，方程退化为 Poisson 方程。
+
+常见的边界条件包括：
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Dirichlet 边界条件}：$u|_{\partial\Omega} = g_D$
+  \item \textbf{Neumann 边界条件}：$\frac{\partial u}{\partial n}\big|_{\partial\Omega} = g_N$
+\end{itemize}
+
+\subsection{五点差分格式（二阶精度）}
+
+对区域 $\Omega$ 进行均匀网格剖分，取步长 $h = L_x / (n-1)$，
+节点 $(x_i, y_j) = (ih, jh)$，$i,j = 0, 1, \ldots, n-1$。
+
+\subsubsection{Taylor 展开推导}
+
+对 $u(x_{i+1}, y_j)$ 和 $u(x_{i-1}, y_j)$ 分别进行 Taylor 展开：
+\begin{align}
+  u(x_{i+1}, y_j) &= u_{i,j} + h\frac{\partial u}{\partial x}\bigg|_{i,j}
+  + \frac{h^2}{2}\frac{\partial^2 u}{\partial x^2}\bigg|_{i,j}
+  + \frac{h^3}{6}\frac{\partial^3 u}{\partial x^3}\bigg|_{i,j}
+  + \frac{h^4}{24}\frac{\partial^4 u}{\partial x^4}\bigg|_{i,j} + O(h^5) \\
+  u(x_{i-1}, y_j) &= u_{i,j} - h\frac{\partial u}{\partial x}\bigg|_{i,j}
+  + \frac{h^2}{2}\frac{\partial^2 u}{\partial x^2}\bigg|_{i,j}
+  - \frac{h^3}{6}\frac{\partial^3 u}{\partial x^3}\bigg|_{i,j}
+  + \frac{h^4}{24}\frac{\partial^4 u}{\partial x^4}\bigg|_{i,j} + O(h^5)
+\end{align}
+
+两式相加消去奇数阶项，得到二阶导数的中心差分近似：
+\begin{equation}
+  \frac{\partial^2 u}{\partial x^2}\bigg|_{i,j} = \frac{u_{i-1,j} - 2u_{i,j} + u_{i+1,j}}{h^2}
+  - \frac{h^2}{12}\frac{\partial^4 u}{\partial x^4}\bigg|_{i,j} + O(h^4)
+  \label{eq:central_diff_x}
+\end{equation}
+
+同理对 $y$ 方向有：
+\begin{equation}
+  \frac{\partial^2 u}{\partial y^2}\bigg|_{i,j} = \frac{u_{i,j-1} - 2u_{i,j} + u_{i,j+1}}{h^2}
+  - \frac{h^2}{12}\frac{\partial^4 u}{\partial y^4}\bigg|_{i,j} + O(h^4)
+  \label{eq:central_diff_y}
+\end{equation}
+
+将~\eqref{eq:central_diff_x}和~\eqref{eq:central_diff_y}代入 $-\nabla^2 u = -\frac{\partial^2 u}{\partial x^2} - \frac{\partial^2 u}{\partial y^2}$，得到五点差分格式：
+\begin{equation}
+  \frac{1}{h^2}(4u_{i,j} - u_{i-1,j} - u_{i+1,j} - u_{i,j-1} - u_{i,j+1}) + k^2 u_{i,j} = f_{i,j}
+  \label{eq:5pt}
+\end{equation}
+
+截断误差为：
+\begin{equation}
+  \tau_{i,j} = \frac{h^2}{12}\left(\frac{\partial^4 u}{\partial x^4} + \frac{\partial^4 u}{\partial y^4}\right)\bigg|_{i,j} + O(h^4) = O(h^2)
+  \label{eq:truncation_5pt}
+\end{equation}
+
+\begin{theorem}[五点差分格式的截断误差]
+  \label{thm:5pt_truncation}
+  对于充分光滑的解 $u$，五点差分格式~\eqref{eq:5pt} 的截断误差为 $O(h^2)$。
+  当 $u$ 为调和函数（$\nabla^2 u = 0$）时，若 $\frac{\partial^4 u}{\partial x^4} + \frac{\partial^4 u}{\partial y^4} = 0$，
+  则截断误差可达 $O(h^4)$（超收敛现象）。
+\end{theorem}
+
+\subsubsection{矩阵表示}
+
+将内节点按行优先排列为向量 $\mathbf{u} \in \mathbb{R}^{(n-2)^2}$，
+可得线性方程组：
+\begin{equation}
+  A\mathbf{u} = \mathbf{f}
+  \label{eq:linear-system}
+\end{equation}
+其中系数矩阵 $A$ 的结构为：
+\begin{equation}
+  A = \frac{1}{h^2}
+  \begin{pmatrix}
+    T & -I & & \\
+    -I & T & \ddots & \\
+    & \ddots & \ddots & -I \\
+    & & -I & T
+  \end{pmatrix}
+  + k^2 I
+\end{equation}
+$T$ 为 $(n-2) \times (n-2)$ 三对角矩阵：
+\begin{equation}
+  T = \begin{pmatrix}
+    4 & -1 & & \\
+    -1 & 4 & \ddots & \\
+    & \ddots & \ddots & -1 \\
+    & & -1 & 4
+  \end{pmatrix}
+\end{equation}
+
+\subsubsection{特征值与特征向量的推导}
+
+\begin{theorem}[DST-I 对角化与特征值]
+  \label{thm:eigenvalues}
+  矩阵 $T$ 可被 DST-I 矩阵对角化。令 $N = n-2$，定义 DST-I 变换矩阵
+  $S \in \mathbb{R}^{N \times N}$，其元素为：
+  \begin{equation}
+    S_{p,i} = \sqrt{\frac{2}{N+1}} \sin\frac{p i \pi}{N+1}, \quad p,i = 1, \ldots, N
+  \end{equation}
+  则 $S$ 为正交矩阵（$S^T S = I$），且
+  \begin{equation}
+    T = S^T \Lambda_x S, \quad \Lambda_x = \mathrm{diag}(\lambda_1, \ldots, \lambda_N)
+  \end{equation}
+  特征值为：
+  \begin{equation}
+    \lambda_p = 4 - 2\cos\frac{p\pi}{N+1}, \quad p = 1, 2, \ldots, N
+  \end{equation}
+
+  \textbf{证明}：验证 $\mathbf{v}^{(p)} = (\sin\frac{p\pi}{N+1}, \sin\frac{2p\pi}{N+1}, \ldots, \sin\frac{Np\pi}{N+1})^T$
+  是 $T$ 的特征向量。计算 $T\mathbf{v}^{(p)}$ 的第 $i$ 个分量：
+  \begin{equation}
+    (T\mathbf{v}^{(p)})_i = 4\sin\frac{ip\pi}{N+1} - \sin\frac{(i-1)p\pi}{N+1} - \sin\frac{(i+1)p\pi}{N+1}
+  \end{equation}
+  利用和差化积公式 $\sin\alpha + \sin\beta = 2\sin\frac{\alpha+\beta}{2}\cos\frac{\alpha-\beta}{2}$：
+  \begin{equation}
+    \sin\frac{(i-1)p\pi}{N+1} + \sin\frac{(i+1)p\pi}{N+1}
+    = 2\sin\frac{ip\pi}{N+1}\cos\frac{p\pi}{N+1}
+  \end{equation}
+  因此：
+  \begin{equation}
+    (T\mathbf{v}^{(p)})_i = (4 - 2\cos\frac{p\pi}{N+1})\sin\frac{ip\pi}{N+1}
+    = \lambda_p \cdot v_i^{(p)} \qquad \qed
+  \end{equation}
+\end{theorem}
+
+对于二维问题，矩阵 $A$ 的特征值为：
+\begin{equation}
+  \lambda_{p,q} = \frac{1}{h^2}(\lambda_p + \lambda_q) + k^2
+  = \frac{2}{h^2}\left(2 - \cos\frac{p\pi}{N+1} - \cos\frac{q\pi}{N+1}\right) + k^2
+\end{equation}
+对应的特征向量为 $\mathbf{v}^{(p)} \otimes \mathbf{v}^{(q)}$（Kronecker 积），
+即 $v_{i,j}^{(p,q)} = \sin\frac{ip\pi}{N+1}\sin\frac{jq\pi}{N+1}$。
+
+\begin{corollary}[条件数估计]
+  \label{cor:condition_number}
+  五点差分矩阵 $A$（$k^2 = 0$，Dirichlet BC）的条件数为：
+  \begin{equation}
+    \kappa(A) = \frac{\lambda_{\max}}{\lambda_{\min}}
+    = \frac{8/h^2 \cdot (1 - O(h^2))}{8\sin^2(\pi h/2)/h^2}
+    \approx \frac{1}{\pi^2 h^2/2} = O(h^{-2})
+  \end{equation}
+  即条件数随网格加密以 $O(h^{-2})$ 增长，这是椭圆型方程差分离散的一般规律。
+\end{corollary}
+
+\subsection{九点紧致差分格式（四阶精度）}
+
+标准五点差分格式的截断误差主项为 $O(h^2)$。
+通过引入紧致差分思想\cite{Lynch1977}——在格式中同时使用 $R_h$ 算子（质量矩阵算子）——
+可以在不扩大计算模板的前提下将精度提升至 $O(h^4)$。
+
+\subsubsection{$R_h$ 算子的定义与 Taylor 展开}
+
+定义算子 $R_h$（质量矩阵算子）：
+\begin{equation}
+  R_h v_{i,j} = \frac{1}{12}(v_{i-1,j} + v_{i+1,j} + v_{i,j-1} + v_{i,j+1})
+  + \frac{2}{3}v_{i,j}
+  \label{eq:Rh_def}
+\end{equation}
+
+$R_h$ 的物理意义是对场变量进行加权平均，中心权重为 $2/3$，
+四个邻点权重各为 $1/12$。以下推导 $R_h$ 的 Taylor 展开式。
+
+\begin{lemma}[$R_h$ 的 Taylor 展开]
+  \label{lem:Rh_taylor}
+  对充分光滑的函数 $v$，算子 $R_h$ 满足：
+  \begin{equation}
+    R_h v = v + \frac{h^2}{12}\nabla^2 v + \frac{h^4}{144}
+    \left(\frac{\partial^4 v}{\partial x^4} + \frac{\partial^4 v}{\partial y^4}\right)
+    + O(h^6)
+    \label{eq:Rh_taylor}
+  \end{equation}
+
+  \textbf{证明}：对 $v_{i\pm1,j}$ 和 $v_{i,j\pm1}$ 做 Taylor 展开：
+  \begin{align}
+    v_{i\pm1,j} &= v \pm h\frac{\partial v}{\partial x} + \frac{h^2}{2}\frac{\partial^2 v}{\partial x^2}
+    \pm \frac{h^3}{6}\frac{\partial^3 v}{\partial x^3} + \frac{h^4}{24}\frac{\partial^4 v}{\partial x^4} + O(h^5) \\
+    v_{i,j\pm1} &= v \pm h\frac{\partial v}{\partial y} + \frac{h^2}{2}\frac{\partial^2 v}{\partial y^2}
+    \pm \frac{h^3}{6}\frac{\partial^3 v}{\partial y^3} + \frac{h^4}{24}\frac{\partial^4 v}{\partial y^4} + O(h^5)
+  \end{align}
+  其中所有偏导数在 $(x_i, y_j)$ 处取值。将四式求和，奇数阶项消去：
+  \begin{equation}
+    v_{i-1,j} + v_{i+1,j} + v_{i,j-1} + v_{i,j+1}
+    = 4v + h^2\nabla^2 v + \frac{h^4}{12}\left(\frac{\partial^4 v}{\partial x^4}
+    + \frac{\partial^4 v}{\partial y^4}\right) + O(h^6)
+  \end{equation}
+  代入~\eqref{eq:Rh_def}：
+  \begin{equation}
+    R_h v = \frac{1}{12}\left[4v + h^2\nabla^2 v
+    + \frac{h^4}{12}\left(\frac{\partial^4 v}{\partial x^4} + \frac{\partial^4 v}{\partial y^4}\right)\right]
+    + \frac{2}{3}v + O(h^6)
+    = v + \frac{h^2}{12}\nabla^2 v + \frac{h^4}{144}\left(\frac{\partial^4 v}{\partial x^4}
+    + \frac{\partial^4 v}{\partial y^4}\right) + O(h^6) \qquad \qed
+  \end{equation}
+\end{lemma}
+
+\subsubsection{紧致差分格式的推导}
+
+利用引理~\ref{lem:Rh_taylor}，将 $R_h$ 作用于方程 $(-\nabla^2 + k^2)u = f$ 的两端：
+\begin{equation}
+  R_h(-\nabla^2 u) + k^2 R_h u = R_h f
+  \label{eq:Rh_apply}
+\end{equation}
+
+由~\eqref{eq:Rh_taylor}，$R_h u = u + O(h^2)$，因此 $k^2 R_h u = k^2 u + O(h^2)$。
+关键在于 $R_h(-\nabla^2 u)$ 的展开。令 $w = -\nabla^2 u$，利用~\eqref{eq:Rh_taylor}：
+\begin{equation}
+  R_h w = w + \frac{h^2}{12}\nabla^2 w + O(h^4)
+  = -\nabla^2 u + \frac{h^2}{12}\nabla^2(-\nabla^2 u) + O(h^4)
+  = -\nabla^2 u - \frac{h^2}{12}\nabla^4 u + O(h^4)
+  \label{eq:Rh_nabla2}
+\end{equation}
+
+另一方面，五点 Laplacian 算子 $L_h^{(5)}$ 的截断误差为：
+\begin{equation}
+  L_h^{(5)} u = -\nabla^2 u
+  + \frac{h^2}{12}\left(\frac{\partial^4 u}{\partial x^4} + \frac{\partial^4 u}{\partial y^4}\right) + O(h^4)
+  \label{eq:L5_error}
+\end{equation}
+
+对比~\eqref{eq:Rh_nabla2}和~\eqref{eq:L5_error}：
+$R_h(-\nabla^2 u)$ 中的 $O(h^2)$ 误差为 $-\frac{h^2}{12}\nabla^4 u$，
+而 $L_h^{(5)} u$ 中的 $O(h^2)$ 误差为 $\frac{h^2}{12}(\frac{\partial^4 u}{\partial x^4} + \frac{\partial^4 u}{\partial y^4})$。
+注意到 $\nabla^4 u = \frac{\partial^4 u}{\partial x^4} + 2\frac{\partial^4 u}{\partial x^2 \partial y^2} + \frac{\partial^4 u}{\partial y^4}$，
+两者的差恰好为混合偏导数项：
+\begin{equation}
+  R_h(-\nabla^2 u) - L_h^{(5)} u = -\frac{h^2}{12}\left(\nabla^4 u
+  - \frac{\partial^4 u}{\partial x^4} - \frac{\partial^4 u}{\partial y^4}\right) + O(h^4)
+  = -\frac{h^2}{6}\frac{\partial^4 u}{\partial x^2 \partial y^2} + O(h^4)
+  \label{eq:diff_Rh_L5}
+\end{equation}
+
+这表明：若能在 $L_h^{(5)}$ 的基础上补偿 $-\frac{h^2}{6}\frac{\partial^4 u}{\partial x^2 \partial y^2}$ 项，
+则可消去 $O(h^2)$ 误差，达到 $O(h^4)$ 精度。
+
+混合偏导数 $\frac{\partial^4 u}{\partial x^2 \partial y^2}$ 的标准差分近似为：
+\begin{equation}
+  \frac{\partial^4 u}{\partial x^2 \partial y^2}\bigg|_{i,j}
+  = \frac{1}{h^4}(u_{i+1,j+1} + u_{i-1,j+1} + u_{i+1,j-1} + u_{i-1,j-1}
+  - 2u_{i+1,j} - 2u_{i-1,j} - 2u_{i,j+1} - 2u_{i,j-1} + 4u_{i,j}) + O(h^2)
+  \label{eq:mixed_deriv}
+\end{equation}
+
+将~\eqref{eq:mixed_deriv}代入~\eqref{eq:diff_Rh_L5}，与 $L_h^{(5)}$ 合并，
+经化简得到九点 Laplacian 算子：
+\begin{equation}
+  L_h v_{i,j} = \frac{1}{6h^2}\left[4(v_{i-1,j} + v_{i+1,j} + v_{i,j-1} + v_{i,j+1})
+  + (v_{i-1,j-1} + v_{i-1,j+1} + v_{i+1,j-1} + v_{i+1,j+1})
+  - 20v_{i,j}\right]
+  \label{eq:Lh_9pt}
+\end{equation}
+可以验证 $L_h u = R_h(-\nabla^2 u) + O(h^4)$，即九点模板与 $R_h$ 作用后的精确算子
+仅在 $O(h^4)$ 级别存在偏差。
+
+\begin{lemma}[$L_h$ 的算子精确分解]
+  \label{lem:Lh_decompose}
+  九点 Laplacian 算子 $L_h$ 可精确分解为五点 Laplacian 与交叉模板之和：
+  \begin{equation}
+    L_h = L_h^{(5)} + \frac{h^2}{6}C_h
+    \label{eq:Lh_decompose}
+  \end{equation}
+  其中交叉模板 $C_h$ 定义为：
+  \begin{equation}
+    C_h v_{i,j} = \frac{1}{h^4}(v_{i+1,j+1} + v_{i-1,j+1} + v_{i+1,j-1} + v_{i-1,j-1}
+    - 2v_{i+1,j} - 2v_{i-1,j} - 2v_{i,j+1} - 2v_{i,j-1} + 4v_{i,j})
+    \label{eq:Ch_def}
+  \end{equation}
+  $C_h$ 恰好是混合偏导数 $\partial^4/\partial x^2\partial y^2$ 的标准差分近似，
+  即 $C_h v = \frac{\partial^4 v}{\partial x^2\partial y^2} + O(h^2)$。
+
+  \textbf{证明}：将~\eqref{eq:Lh_9pt}中的九点模板与五点模板~\eqref{eq:5pt}做差：
+  \begin{align}
+    L_h v - L_h^{(5)} v &= \frac{1}{6h^2}\Big[(4-6)(v_{i-1,j}+v_{i+1,j}+v_{i,j-1}+v_{i,j+1}) \notag\\
+    &\quad + (v_{i-1,j-1}+v_{i-1,j+1}+v_{i+1,j-1}+v_{i+1,j+1}) - (20-4\cdot6+4)v_{i,j}\Big]
+  \end{align}
+  注意 $L_h^{(5)} = \frac{1}{h^2}(-v_{i-1,j}-v_{i+1,j}-v_{i,j-1}-v_{i,j+1}+4v_{i,j})$，
+  系数为 $-1/h^2$；而 $L_h$ 中对应系数为 $4/(6h^2) = 2/(3h^2)$，差为 $2/(3h^2)-(-1/h^2) = 5/(3h^2)$。
+  直接计算可得 $L_h - L_h^{(5)}$ 的模板为角点 $1/(6h^2)$，边点 $-2/(6h^2) = -1/(3h^2)$，
+  中心 $4/(6h^2) = 2/(3h^2)$，提取因子 $1/(6h^2)$ 后与~\eqref{eq:Ch_def}一致。
+  由~\eqref{eq:mixed_deriv}，$C_h$ 是 $\partial^4/\partial x^2\partial y^2$ 的差分近似。$\qed$
+\end{lemma}
+
+\begin{remark}
+  分解~\eqref{eq:Lh_decompose}的物理意义十分清晰：$L_h$ 相比 $L_h^{(5)}$ 多出的部分
+  恰好是对混合偏导数 $\partial^4 u/\partial x^2\partial y^2$ 的补偿。
+  这正是~\eqref{eq:diff_Rh_L5}中需要消去的项。
+  因此紧致差分格式可以理解为：先用 $R_h$ 识别出 $O(h^2)$ 误差
+  （混合偏导数项），再用四个角节点的差分模板精确补偿该项。
+\end{remark}
+
+最终得到紧致差分格式：
+\begin{equation}
+  (L_h - k^2 R_h)u_{i,j} = -R_h f_{i,j}
+  \label{eq:compact-9pt}
+\end{equation}
+
+\begin{remark}
+  格式~\eqref{eq:compact-9pt}中 $R_h$ 出现在等式两端，使得该格式本质上是
+  一个\textbf{广义特征值问题}：$L_h$ 和 $R_h$ 同时作用于 $u$，
+  右端项也需要用 $R_h$ 修正。这种"紧致"结构保证了使用仅九个节点的模板
+  即可达到四阶精度，而标准差分法需要至少 $5 \times 5$ 的模板才能达到同等精度。
+\end{remark}
+
+\subsubsection{Fourier 特征值的推导}
+
+为严格证明四阶精度，采用 Fourier 分析方法。
+设离散模式为 $u_{i,j} = e^{\mathrm{i}(\alpha i + \beta j)}$，
+其中 $\alpha = p\pi h$，$\beta = q\pi h$（$h$ 为步长，$p,q$ 为模式指标）。
+
+\begin{lemma}[Fourier 特征值]
+  \label{lem:fourier_eigenvalues}
+  算子 $L_h$ 和 $R_h$ 在 Fourier 模式下的特征值分别为：
+  \begin{align}
+    \hat{\lambda}_L(\alpha,\beta) &= \frac{1}{6h^2}(-20 + 8\cos\alpha + 8\cos\beta + 4\cos\alpha\cos\beta)
+    \label{eq:lam_L} \\
+    \hat{\lambda}_R(\alpha,\beta) &= \frac{2}{3} + \frac{1}{6}(\cos\alpha + \cos\beta)
+    \label{eq:lam_R}
+  \end{align}
+
+  \textbf{证明}：将 $u_{i,j} = e^{\mathrm{i}(\alpha i + \beta j)}$ 代入 $L_h$：
+  \begin{align}
+    L_h u_{i,j} &= \frac{1}{6h^2}\left[4(e^{-\mathrm{i}\alpha}+e^{\mathrm{i}\alpha}+e^{-\mathrm{i}\beta}+e^{\mathrm{i}\beta})
+    + (e^{-\mathrm{i}\alpha-\mathrm{i}\beta}+e^{-\mathrm{i}\alpha+\mathrm{i}\beta}+e^{\mathrm{i}\alpha-\mathrm{i}\beta}+e^{\mathrm{i}\alpha+\mathrm{i}\beta})
+    - 20\right] u_{i,j} \notag \\
+    &= \frac{1}{6h^2}\left[8\cos\alpha + 8\cos\beta + 4\cos\alpha\cos\beta - 20\right] u_{i,j}
+  \end{align}
+  其中利用了 $e^{-\mathrm{i}\alpha}+e^{\mathrm{i}\alpha} = 2\cos\alpha$ 以及
+  $(e^{-\mathrm{i}\alpha}+e^{\mathrm{i}\alpha})(e^{-\mathrm{i}\beta}+e^{\mathrm{i}\beta}) = 4\cos\alpha\cos\beta$。
+
+  同理代入 $R_h$：
+  \begin{equation}
+    R_h u_{i,j} = \left[\frac{1}{12}(2\cos\alpha + 2\cos\beta) + \frac{2}{3}\right] u_{i,j}
+    = \left[\frac{2}{3} + \frac{1}{6}(\cos\alpha + \cos\beta)\right] u_{i,j} \qquad \qed
+  \end{equation}
+\end{lemma}
+
+\subsubsection{四阶精度的严格证明}
+
+\begin{theorem}[四阶精度]
+  \label{thm:4th_order}
+  格式~\eqref{eq:compact-9pt} 的有效离散特征值满足：
+  \begin{equation}
+    \lambda_{\mathrm{discrete}}(\alpha,\beta) = -\frac{\hat{\lambda}_L}{\hat{\lambda}_R} + k^2
+    = (\xi^2 + \eta^2 + k^2) - \frac{(\xi^2+\eta^2)(3\xi^4-8\xi^2\eta^2+3\eta^4)}{720}h^4 + O(h^6)
+  \end{equation}
+  其中 $\xi = p\pi$，$\eta = q\pi$ 为模式波数。
+  因此格式具有 $O(h^4)$ 的截断误差。
+
+  \textbf{证明}：格式~\eqref{eq:compact-9pt} 在 Fourier 空间中为：
+  \begin{equation}
+    (\hat{\lambda}_L - k^2\hat{\lambda}_R)\hat{u} = -\hat{\lambda}_R\hat{f}
+    \quad \Longrightarrow \quad
+    \hat{u} = \frac{-\hat{\lambda}_R}{\hat{\lambda}_L - k^2\hat{\lambda}_R}\hat{f}
+    = \frac{\hat{f}}{-\hat{\lambda}_L/\hat{\lambda}_R + k^2}
+  \end{equation}
+  有效离散特征值为 $\lambda_{\mathrm{discrete}} = -\hat{\lambda}_L/\hat{\lambda}_R + k^2$，
+  连续精确特征值为 $\lambda_{\mathrm{exact}} = \xi^2 + \eta^2 + k^2$。
+
+  令 $\alpha = \xi h$，$\beta = \eta h$，对 $\hat{\lambda}_L$ 和 $\hat{\lambda}_R$
+  在 $h = 0$ 处做 Taylor 展开。利用 $\cos(\xi h) = 1 - \xi^2h^2/2 + \xi^4h^4/24 - \xi^6h^6/720 + \cdots$：
+
+  \textbf{第一步}：展开 $\hat{\lambda}_R$。
+  \begin{equation}
+    \hat{\lambda}_R = \frac{2}{3} + \frac{1}{6}\left(2 - \frac{\xi^2+\eta^2}{2}h^2
+    + \frac{\xi^4+\eta^4}{24}h^4 - \cdots\right)
+    = 1 - \frac{\xi^2+\eta^2}{12}h^2 + \frac{\xi^4+\eta^4}{144}h^4 + O(h^6)
+    \label{eq:lam_R_expand}
+  \end{equation}
+
+  \textbf{第二步}：展开 $\hat{\lambda}_L$。将 $\cos(\xi h)$、$\cos(\eta h)$、$\cos(\xi h)\cos(\eta h)$
+  的展开式代入~\eqref{eq:lam_L}，经整理：
+  \begin{equation}
+    \hat{\lambda}_L = -(\xi^2+\eta^2) + \frac{(\xi^2+\eta^2)^2}{12}h^2
+    - \frac{(\xi^2+\eta^2)(\xi^4+4\xi^2\eta^2+\eta^4)}{360}h^4 + O(h^6)
+    \label{eq:lam_L_expand}
+  \end{equation}
+
+  \textbf{第三步}：计算 $-\hat{\lambda}_L/\hat{\lambda}_R$。
+  将~\eqref{eq:lam_R_expand}的逆展开为 $\hat{\lambda}_R^{-1} = 1 + \frac{\xi^2+\eta^2}{12}h^2 + O(h^4)$，
+  与 $-\hat{\lambda}_L$ 相乘：
+  \begin{equation}
+    -\frac{\hat{\lambda}_L}{\hat{\lambda}_R}
+    = \left[(\xi^2+\eta^2) - \frac{(\xi^2+\eta^2)^2}{12}h^2 + O(h^4)\right]
+    \cdot \left[1 + \frac{\xi^2+\eta^2}{12}h^2 + O(h^4)\right]
+  \end{equation}
+  展开并合并同类项，$h^2$ 项恰好消去：
+  \begin{equation}
+    -\frac{\hat{\lambda}_L}{\hat{\lambda}_R}
+    = (\xi^2+\eta^2) - \frac{(\xi^2+\eta^2)(3\xi^4 - 8\xi^2\eta^2 + 3\eta^4)}{720}h^4 + O(h^6)
+  \end{equation}
+
+  因此截断误差为：
+  \begin{equation}
+    \tau(\xi,\eta) = \lambda_{\mathrm{discrete}} - \lambda_{\mathrm{exact}}
+    = -\frac{(\xi^2+\eta^2)(3\xi^4 - 8\xi^2\eta^2 + 3\eta^4)}{720}h^4 + O(h^6) = O(h^4)
+  \end{equation}
+  对任意非零模式 $(\xi, \eta)$，$h^4$ 项系数不为零
+  （例如取 $\xi = \eta$ 时 $3\xi^4-8\xi^2\eta^2+3\eta^4 = -2\xi^4 \neq 0$），
+  因此四阶是最佳可达精度。
+
+  \textbf{$O(h^6)$ 项的具体表达式}：
+  经过与上述类似的逐阶展开过程（利用 SymPy 符号计算独立验证），
+  $O(h^6)$ 项系数为：
+  \begin{equation}
+    c_6(\xi,\eta) = \frac{(\xi^2+\eta^2)}{60480}\Big[(\xi^2+\eta^2)^2
+    - 20(\xi^4+\eta^4)(\xi^2+\eta^2) + 64\xi^2\eta^2(\xi^2+\eta^2)\Big]
+    \label{eq:c6_coeff}
+  \end{equation}
+  该系数关于 $(\xi,\eta)$ 非零，因此不存在 $O(h^6)$ 意义下的超收敛。
+  四阶精度阶数是紧的。$\qed$
+\end{theorem}
+
+\begin{remark}
+  对比五点差分格式的截断误差 $\tau^{(5)} = -\frac{\xi^4+\eta^4}{12}h^2 + O(h^4)$，
+  九点紧致格式将精度从 $O(h^2)$ 提升到 $O(h^4)$，
+  且计算模板仅从5点扩展到9点，额外代价极小。
+  四阶精度提升的物理机制在于：$R_h$ 算子的 $O(h^2)$ 误差（含全双调和算子 $\nabla^4$）
+  与 $L_h^{(5)}$ 的 $O(h^2)$ 误差（仅含分离的四阶导数）
+  的差恰好为混合偏导数 $\partial^4/\partial x^2\partial y^2$，
+  该项可被四个角节点的差分模板精确补偿。
+\end{remark}
+
+\subsubsection{六阶格式不可行的证明}
+
+下面证明，对格式~\eqref{eq:compact-9pt} 进行自然推广，
+加入 $h^2$ 量级的修正参数后，仍无法达到六阶精度。
+
+\begin{theorem}[六阶紧致格式不可行\cite{Sutmann2007}]
+  \label{thm:6th_impossible}
+  考虑修正紧致格式：
+  \begin{equation}
+    (L_h + \alpha h^2 L_h^{(5)}) u - k^2(R_h + \beta h^2 I) u = -(R_h + \gamma h^2 I)f
+    \label{eq:modified_compact}
+  \end{equation}
+  其中 $\alpha, \beta, \gamma \in \mathbb{R}$ 为待定常数。
+  不存在统一的常数 $(\alpha, \beta, \gamma)$ 使得截断误差达到 $O(h^6)$。
+
+  \textbf{证明}：对修正格式做 Fourier 分析，有效离散特征值为：
+  \begin{equation}
+    \lambda_{\mathrm{mod}} = -\frac{\hat{\lambda}_L + \alpha h^2\hat{\lambda}_5
+    - k^2(\hat{\lambda}_R + \beta h^2)}{\hat{\lambda}_R + \gamma h^2}
+  \end{equation}
+  其中 $\hat{\lambda}_5 = \frac{2}{h^2}(2-\cos\alpha-\cos\beta)$ 为五点 Laplacian 特征值。
+
+  \textbf{情形一：$k^2 \neq 0$（Helmholtz 方程）}。
+
+  将 $\lambda_{\mathrm{mod}} - \lambda_{\mathrm{exact}}$ 展开为 $h$ 的幂级数，
+  $h^2$ 项系数为：
+  \begin{equation}
+    c_2 = -\alpha(\xi^2+\eta^2) + \beta k^2 - \gamma(\xi^2+\eta^2+k^2)
+    \label{eq:c2_general}
+  \end{equation}
+  令 $c_2 = 0$，解出 $\alpha$：
+  \begin{equation}
+    \alpha = \frac{\beta k^2 - \gamma(\xi^2+\eta^2+k^2)}{\xi^2+\eta^2}
+  \end{equation}
+  该解\textbf{依赖于模式} $(\xi, \eta)$：对不同的 Fourier 模式，
+  $c_2 = 0$ 要求不同的 $\alpha$ 值。
+  因此不存在统一的 $(\alpha, \beta, \gamma)$ 使得所有模式的 $c_2 = 0$，
+  即连 $O(h^2)$ 误差都无法消除，更不可能达到 $O(h^6)$。
+
+  \textbf{情形二：$k^2 = 0$（Poisson 方程）}。
+
+  此时~\eqref{eq:c2_general}化为 $c_2 = -(\alpha+\gamma)(\xi^2+\eta^2)$。
+  令 $c_2 = 0$ 得 $\alpha = -\gamma$（与模式无关，可统一满足）。
+
+  代入 $\alpha = -\gamma$ 后，$h^4$ 项系数为：
+  \begin{equation}
+    c_4 = -\frac{3\eta^6 + 60\gamma\eta^4 - 5\eta^4\xi^2 - 5\eta^2\xi^4 + 60\gamma\xi^4 + 3\xi^6}{720}
+  \end{equation}
+  令 $c_4 = 0$ 解出 $\gamma$：
+  \begin{equation}
+    \gamma = \frac{-\eta^6/20 + \eta^4\xi^2/12 + \eta^2\xi^4/12 - \xi^6/20}{\eta^4+\xi^4}
+  \end{equation}
+  该解\textbf{依赖于模式} $(\xi, \eta)$：不存在统一的 $\gamma$ 使所有模式的 $c_4 = 0$。
+
+  综合两种情形，形如~\eqref{eq:modified_compact}的三参数修正紧致格式
+  不存在使截断误差达到 $O(h^6)$ 的通用常数。
+  因此，四阶是九点紧致差分格式的自然精度上限。
+
+  下面对情形二给出更精细的矛盾展示。令 $c_4$ 的分子为：
+  \begin{equation}
+    N(\xi,\eta,\gamma) = 3\eta^6 + 60\gamma\eta^4 - 5\eta^4\xi^2 - 5\eta^2\xi^4 + 60\gamma\xi^4 + 3\xi^6
+  \end{equation}
+  取特定模式代入：
+  \begin{itemize}[itemsep=2pt]
+    \item 模式 $(1,0)$：$N(1,0,\gamma) = 60\gamma + 3$。令 $N = 0$ 得 $\gamma = -1/20$。
+    \item 模式 $(1,1)$：$N(1,1,\gamma) = 120\gamma - 4$。令 $N = 0$ 得 $\gamma = 1/30$。
+  \end{itemize}
+  由于 $-1/20 \neq 1/30$，不存在统一的 $\gamma$ 同时满足两个模式的约束。
+  更简洁地，$2 \cdot N(1,0,\gamma) - N(1,1,\gamma) = 2(60\gamma+3)-(120\gamma-4) = 10 \neq 0$，
+  因此即使允许 $\gamma$ 取任意实数值，两个模式也不可能同时满足 $c_4 = 0$。
+
+  该结论已在 Lean 4 定理证明器中完成形式化验证：
+  在整数域上（`omega` 策略）和实数域上（Mathlib 的 `ring` + `linarith` 策略）
+  均严格验证了不存在满足条件的 $\gamma$。$\qed$
+\end{theorem}
+
+\begin{remark}
+  定理~\ref{thm:6th_impossible}的结论针对的是三参数修正族
+  $(L_h + \alpha h^2 L_h^{(5)})u - k^2(R_h+\beta h^2 I)u = -(R_h+\gamma h^2 I)f$。
+  若允许使用更多参数或更大的计算模板（如引入高阶交叉导数项的差分近似），
+  则六阶精度在 Poisson 方程情形下是可达的\cite{Sutmann2007}。
+  但这类方案不再保持九点模板的紧凑性，且无法统一处理 $k^2 \neq 0$ 的 Helmholtz 方程。
+  Sutmann\cite{Sutmann2007}通过引入宽度为 $\sqrt{6}h$ 的广义节点，
+  构造了六阶精度的紧致差分格式，但该格式的频域除数不再具有简单的解析形式，
+  且在 $k^2 \neq 0$ 时仍需额外修正。
+\end{remark}
+
+\subsection{Dirichlet 边界条件处理}
+
+对于齐次 Dirichlet 边界条件 $u|_{\partial\Omega} = 0$，
+未知数仅在内节点 $(i,j)$，$i,j = 1, \ldots, n-2$ 上取值。
+边界贡献从右端项中消去：
+\begin{equation}
+  \tilde{f}_{i,j} = f_{i,j} - \frac{1}{h^2}(g_{0,j}\delta_{i,1} + g_{n-1,j}\delta_{i,n-2}
+  + g_{i,0}\delta_{j,1} + g_{i,n-1}\delta_{j,n-2})
+\end{equation}
+
+对于非齐次 Dirichlet 边界条件，边界值直接赋给边界节点，
+内节点方程中的边界贡献移至右端项。
+
+\subsection{Neumann 边界条件处理}
+
+\subsubsection{Ghost-Point 方法}
+
+对于 Neumann 边界条件 $\partial u/\partial n = 0$，
+采用 ghost-point 方法：在边界外引入虚拟节点，
+利用中心差分近似法向导数条件：
+\begin{equation}
+  \frac{u_{-1,j} - u_{1,j}}{2h} = 0 \quad \Longrightarrow \quad u_{-1,j} = u_{1,j}
+\end{equation}
+
+将 ghost-point 值代入边界处 $i=0$ 的五点差分格式：
+\begin{align}
+  \frac{1}{h^2}(4u_{0,j} - u_{-1,j} - u_{1,j} - u_{0,j-1} - u_{0,j+1}) + k^2 u_{0,j} &= f_{0,j} \\
+  \Longrightarrow \quad \frac{1}{h^2}(4u_{0,j} - 2u_{1,j} - u_{0,j-1} - u_{0,j+1}) + k^2 u_{0,j} &= f_{0,j}
+\end{align}
+
+类似地，对四个边界分别处理。注意 ghost-point 的引入使得 $n$ 个物理节点
+（包含边界）全部成为未知量，而非仅内节点。
+
+\subsubsection{对称化与 DCT-I 变换}
+
+ghost-point Neumann Laplacian 矩阵 $G$ 是\textbf{非对称}的。
+具体地，以 $n=4$ 为例，一维 Neumann Laplacian 矩阵为：
+\begin{equation}
+  G = \frac{1}{h^2}
+  \begin{pmatrix}
+    2 & -2 & 0 \\
+    -1 & 2 & -1 \\
+    0 & -2 & 2
+  \end{pmatrix}
+\end{equation}
+可见 $G_{0,1} = -2/h^2 \neq G_{1,0} = -1/h^2$。
+
+引入对角缩放矩阵 $D = \mathrm{diag}(\sqrt{2}, 1, \ldots, 1, \sqrt{2})$，
+定义对称化矩阵 $S = D^{-1}GD$。
+
+\begin{theorem}[对称化 DCT-I 对角化\cite{Strang1999}]
+  \label{thm:symmetrize}
+  对称化矩阵 $S$ 可被 DCT-I 正交对角化。
+
+  \textbf{证明}：对 $S = D^{-1}GD$，考虑其元素。
+  以 $S_{0,1} = D^{-1}_{0,0} G_{0,1} D_{1,1} = \frac{1}{\sqrt{2}} \cdot (-\frac{2}{h^2}) \cdot 1 = -\frac{\sqrt{2}}{h^2}$，
+  而 $S_{1,0} = D^{-1}_{1,1} G_{1,0} D_{0,0} = 1 \cdot (-\frac{1}{h^2}) \cdot \sqrt{2} = -\frac{\sqrt{2}}{h^2}$。
+  因此 $S_{0,1} = S_{1,0}$，$S$ 确实对称。
+
+  定义 DCT-I 正交矩阵 $C \in \mathbb{R}^{n \times n}$，其元素为：
+  \begin{equation}
+    C_{k,j} = \epsilon_k \sqrt{\frac{2}{n-1}} \cos\frac{kj\pi}{n-1}, \quad k,j = 0, \ldots, n-1
+  \end{equation}
+  其中 $\epsilon_0 = \epsilon_{n-1} = 1/\sqrt{2}$，$\epsilon_k = 1$（$1 \leq k \leq n-2$）。
+
+  直接验证 $S = C^T \Lambda C$，其中：
+  \begin{equation}
+    \lambda_k = \frac{2}{h^2}(1 - \cos\frac{k\pi}{n-1}), \quad k = 0, 1, \ldots, n-1
+  \end{equation}
+  $k=0$ 对应 $\lambda_0 = 0$（常数模式），这是 Neumann 问题的零特征值。$\qed$
+
+  求解流程为：
+  \begin{enumerate}[itemsep=1pt]
+    \item 缩放右端：$\tilde{f} = D^{-1}_x D^{-1}_y f$
+    \item 2D DCT-I 变换：$\hat{f} = C_x \tilde{f} C_y^T$
+    \item 频域求解：$\hat{u}_{k,l} = \hat{f}_{k,l} / (\lambda_k + \lambda_l + k^2)$
+    \item 逆变换：$\tilde{u} = C_x^T \hat{u} C_y$
+    \item 反缩放：$u = D_x D_y \tilde{u}$
+  \end{enumerate}
+\end{theorem}

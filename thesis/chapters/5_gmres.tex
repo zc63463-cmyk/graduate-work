@@ -1,0 +1,228 @@
+% ============================================================
+% 第五章 GMRES 迭代法
+% ============================================================
+\section{GMRES 迭代法}
+\label{sec:gmres}
+
+\subsection{Krylov 子空间方法}
+
+对于大型稀疏线性方程组 $A\mathbf{x} = \mathbf{b}$，
+Krylov 子空间方法是一类重要的迭代法。
+其核心思想是在 Krylov 子空间
+\begin{equation}
+  \mathcal{K}_m(A, \mathbf{r}_0) = \mathrm{span}\{\mathbf{r}_0, A\mathbf{r}_0, A^2\mathbf{r}_0, \ldots, A^{m-1}\mathbf{r}_0\}
+\end{equation}
+中寻找近似解，其中 $\mathbf{r}_0 = \mathbf{b} - A\mathbf{x}_0$ 为初始残差。
+
+Krylov 子空间方法的基本动机来自多项式逼近理论：
+在 $\mathcal{K}_m$ 中的近似解 $\mathbf{x}_m$ 满足
+\begin{equation}
+  \mathbf{b} - A\mathbf{x}_m = p_m(A)\mathbf{r}_0
+\end{equation}
+其中 $p_m$ 是次数不超过 $m$ 且 $p_m(0) = 1$ 的多项式。
+因此，Krylov 方法的收敛性取决于是否存在这样的多项式
+使得 $\|p_m(A)\|$ 足够小，而这与矩阵 $A$ 的特征值分布和谱性质密切相关。
+
+\subsection{Arnoldi 过程}
+
+Arnoldi 过程通过修正 Gram-Schmidt 正交化构建 Krylov 子空间的正交基：
+\begin{algorithm}
+\caption{Arnoldi 过程}
+\begin{algorithmic}[1]
+\REQUIRE 矩阵 $A$，初始向量 $\mathbf{v}_1$（$\|\mathbf{v}_1\| = 1$），步数 $m$
+\ENSURE 正交矩阵 $V_{m+1}$，上 Hessenberg 矩阵 $\bar{H}_m$
+\FOR{$j = 1, 2, \ldots, m$}
+  \STATE $\mathbf{w} = A\mathbf{v}_j$
+  \FOR{$i = 1, 2, \ldots, j$}
+    \STATE $h_{i,j} = \langle \mathbf{v}_i, \mathbf{w} \rangle$
+    \STATE $\mathbf{w} = \mathbf{w} - h_{i,j}\mathbf{v}_i$
+  \ENDFOR
+  \STATE $h_{j+1,j} = \|\mathbf{w}\|$
+  \IF{$h_{j+1,j} < \varepsilon$}
+    \STATE \textbf{break} \COMMENT{Krylov 子空间不变，精确解在 $\mathcal{K}_j$ 中}
+  \ENDIF
+  \STATE $\mathbf{v}_{j+1} = \mathbf{w} / h_{j+1,j}$
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+Arnoldi 过程产生分解：
+\begin{equation}
+  A V_m = V_{m+1} \bar{H}_m
+  \label{eq:arnoldi}
+\end{equation}
+其中 $V_m = [\mathbf{v}_1, \ldots, \mathbf{v}_m] \in \mathbb{R}^{N \times m}$，
+$\bar{H}_m \in \mathbb{R}^{(m+1) \times m}$ 为上 Hessenberg 矩阵。
+
+\begin{proposition}[Arnoldi 分解的等价关系]
+  \label{prop:arnoldi_equiv}
+  Arnoldi 分解~\eqref{eq:arnoldi}等价于：
+  \begin{equation}
+    V_m^T A V_m = H_m
+  \end{equation}
+  其中 $H_m$ 为 $\bar{H}_m$ 去掉最后一行得到的 $m \times m$ 矩阵，
+  即 $\mathcal{K}_m$ 在 $V_m$ 基下对 $A$ 的 Rayleigh-Ritz 投影。
+\end{proposition}
+
+\subsection{GMRES 算法}
+
+GMRES（Generalized Minimal RESidual）在 Krylov 子空间 $\mathcal{K}_m$ 中极小化残差范数：
+\begin{equation}
+  \mathbf{x}_m = \mathbf{x}_0 + V_m \mathbf{y}_m, \quad
+  \mathbf{y}_m = \arg\min_{\mathbf{y}} \|\beta \mathbf{e}_1 - \bar{H}_m \mathbf{y}\|
+  \label{eq:gmres_ls}
+\end{equation}
+其中 $\beta = \|\mathbf{r}_0\|$，$\mathbf{e}_1 = (1, 0, \ldots, 0)^T \in \mathbb{R}^{m+1}$。
+
+\subsubsection{Givens 旋转求解最小二乘问题}
+
+最小二乘问题~\eqref{eq:gmres_ls}通过 Givens 旋转将 $\bar{H}_m$ 逐步化为上三角矩阵 $R_m$ 求解。
+
+定义 Givens 旋转矩阵 $\Omega_j$，消去 $\bar{H}_m$ 中第 $j+1$ 行的元素：
+\begin{equation}
+  \Omega_j = \begin{pmatrix}
+    I_j & & & \\
+    & c_j & s_j & \\
+    & -s_j & c_j & \\
+    & & & I_{m-j-1}
+  \end{pmatrix}
+\end{equation}
+其中 $c_j = h_{j,j}^{(j-1)}/r$，$s_j = h_{j+1,j}^{(j-1)}/r$，
+$r = \sqrt{(h_{j,j}^{(j-1)})^2 + (h_{j+1,j}^{(j-1)})^2}$，
+上标 $(j-1)$ 表示经过前 $j-1$ 次 Givens 旋转后的值。
+
+经过 $m$ 次 Givens 旋转后：
+\begin{equation}
+  \Omega_m \cdots \Omega_1 \bar{H}_m = \begin{pmatrix} R_m \\ 0 \end{pmatrix}, \quad
+  \Omega_m \cdots \Omega_1 (\beta \mathbf{e}_1) = \begin{pmatrix} \mathbf{g}_m \\ \gamma_{m+1} \end{pmatrix}
+\end{equation}
+则残差范数为 $|\gamma_{m+1}|$，最小二乘解通过回代 $R_m \mathbf{y}_m = \mathbf{g}_m$ 得到。
+
+\begin{algorithm}
+\caption{GMRES 算法\cite{SaadSchultz1986, Niu2009}}
+\begin{algorithmic}[1]
+\REQUIRE $A$, $\mathbf{b}$, 初始猜测 $\mathbf{x}_0$，容差 $\varepsilon$，重启参数 $m$
+\ENSURE 近似解 $\mathbf{x}$
+\STATE $\mathbf{r}_0 = \mathbf{b} - A\mathbf{x}_0$，$\beta = \|\mathbf{r}_0\|$，$\mathbf{v}_1 = \mathbf{r}_0 / \beta$
+\FOR{重启循环}
+  \FOR{$j = 1, 2, \ldots, m$}
+    \STATE Arnoldi 步：计算 $\mathbf{w} = A\mathbf{v}_j$，正交化得 $h_{i,j}$ 和 $\mathbf{v}_{j+1}$
+    \STATE 对 $\bar{H}_m$ 的第 $j$ 列应用已有 Givens 旋转 $\Omega_1, \ldots, \Omega_{j-1}$
+    \STATE 计算新 Givens 旋转 $\Omega_j$：$c_j, s_j$
+    \STATE 应用旋转到右端：$\mathbf{g} \leftarrow \Omega_j \mathbf{g}$
+    \STATE 残差范数 $= |g_{j+1}|$；若 $< \varepsilon$，求解 $R_j \mathbf{y} = \mathbf{g}$，更新 $\mathbf{x}$，停止
+  \ENDFOR
+  \STATE 求解 $R_m \mathbf{y} = \mathbf{g}$，更新 $\mathbf{x} = \mathbf{x} + V_m \mathbf{y}$
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{GMRES 的收敛性分析}
+
+\begin{theorem}[GMRES 最优性]
+  \label{thm:gmres_optimality}
+  GMRES 产生的近似解 $\mathbf{x}_m$ 满足：
+  \begin{equation}
+    \|\mathbf{b} - A\mathbf{x}_m\| = \min_{\mathbf{x} \in \mathbf{x}_0 + \mathcal{K}_m}
+    \|\mathbf{b} - A\mathbf{x}\|
+  \end{equation}
+  即 GMRES 在所有 $\mathbf{x}_0 + \mathcal{K}_m$ 中的向量中给出了最小的残差范数。
+
+  \textbf{证明}：由 $\mathbf{x}_m = \mathbf{x}_0 + V_m\mathbf{y}_m$ 和
+  $AV_m = V_{m+1}\bar{H}_m$，残差为：
+  \begin{align}
+    \mathbf{r}_m &= \mathbf{b} - A\mathbf{x}_m = \mathbf{r}_0 - AV_m\mathbf{y}_m \\
+    &= \beta\mathbf{v}_1 - V_{m+1}\bar{H}_m\mathbf{y}_m \\
+    &= V_{m+1}(\beta\mathbf{e}_1 - \bar{H}_m\mathbf{y}_m)
+  \end{align}
+  由于 $V_{m+1}$ 的列正交，$\|\mathbf{r}_m\| = \|\beta\mathbf{e}_1 - \bar{H}_m\mathbf{y}_m\|$。
+  GMRES 选择 $\mathbf{y}_m$ 极小化此范数，得证。$\qed$
+\end{theorem}
+
+\begin{theorem}[GMRES 收敛率估计]
+  \label{thm:gmres_convergence}
+  设 $A$ 为正定矩阵（$A + A^T$ 正定），$\lambda_{\min}$ 和 $\lambda_{\max}$
+  分别为 $A + A^T$ 的最小和最大特征值，则：
+  \begin{equation}
+    \frac{\|\mathbf{r}_m\|}{\|\mathbf{r}_0\|}
+    \leq \left(1 - \frac{\lambda_{\min}^2}{\lambda_{\max} \|A\|^2}\right)^{m/2}
+    \label{eq:gmres_bound}
+  \end{equation}
+  对于五点差分 Helmholtz 矩阵，$\|A\| \approx 8/h^2 + k^2$，
+  $\lambda_{\min} \approx k^2$（当 $k^2 > 0$ 时），
+  因此收敛率近似为：
+  \begin{equation}
+    \rho \approx 1 - \frac{k^4}{(8/h^2 + k^2)^2}
+  \end{equation}
+  当 $k^2$ 较小或 $h$ 较小时，$\rho \to 1$，收敛速度急剧下降。
+\end{theorem}
+
+\subsection{重启策略}
+
+由于 Arnoldi 过程需要存储 $m$ 个 $N$-维向量，
+内存开销为 $O(mN)$。当 $m$ 较大时，采用重启策略 GMRES($m$)：
+每 $m$ 步后重新计算残差，以当前近似解为初始猜测开始新一轮迭代。
+
+重启参数 $m$ 的选择影响收敛速度：
+\begin{itemize}[itemsep=2pt]
+  \item $m$ 越大，每轮迭代的收敛量越大，但内存和正交化开销也越大
+  \item $m$ 太小可能导致\textbf{停滞现象}：重启后残差范数不再下降
+  \item 典型取值 $m = 20 \sim 50$
+\end{itemize}
+
+\begin{remark}[重启的代价]
+  重启丢失了之前所有 Krylov 基向量信息，
+  新的 Krylov 子空间可能只包含有限的谱信息。
+  对于高度不定的问题，GMRES($m$) 可能需要极多的重启轮次，
+  这是本文实验中 $n=129$ 时 GMRES(30) 需要 161290 次迭代的根本原因。
+\end{remark}
+
+\subsection{2D Helmholtz 稀疏矩阵构造}
+
+对于五点差分格式的 Helmholtz 方程，系数矩阵 $A$ 为块三对角稀疏矩阵。
+
+\subsubsection{Dirichlet 边界条件}
+
+矩阵 $A \in \mathbb{R}^{N^2 \times N^2}$（$N = n-2$）的结构如
+式~\eqref{eq:A_kron}所示，每个内部节点对应一行，最多5个非零元素。
+非零元素总数约为 $5N^2 - 4N$，稀疏率为 $O(1/N^2)$。
+
+\subsubsection{Neumann 边界条件}
+
+对于 Neumann 边界条件，ghost-point 方法导致边界处邻点系数
+为 $-2/h^2$（而非 $-1/h^2$）。
+
+具体地，对 $n$ 个节点（含边界），矩阵 $A \in \mathbb{R}^{n^2 \times n^2}$ 中：
+\begin{itemize}[itemsep=2pt]
+  \item 角点 $(0,0)$：对角元 $4/h^2 + k^2$，邻点 $-2/h^2$（两个方向）
+  \item 边点 $(0,j)$（非角点）：对角元 $4/h^2 + k^2$，法向邻点 $-2/h^2$，切向邻点 $-1/h^2$
+  \item 内点 $(i,j)$：与 Dirichlet 相同
+\end{itemize}
+
+GMRES 作为非对称求解器，可以自然处理此类非对称系统。
+
+\subsection{预处理策略}
+
+对于大波数 $k$，Helmholtz 矩阵的条件数急剧增大，
+GMRES 的收敛速度显著下降。常用的预处理策略包括：
+
+\subsubsection{Shifted Laplacian 预处理}
+
+以 $-\nabla^2 + (k^2 - i\eta)$ 的算子作为预处理矩阵 $M$，
+其中 $\eta$ 为复数移位参数。预处理系统为 $M^{-1}A\mathbf{x} = M^{-1}\mathbf{b}$。
+
+\textbf{原理}：$M$ 的谱性质接近 $A$（仅差虚数移位 $i\eta$），
+因此 $M^{-1}A$ 的特征值聚集在 1 附近，有利于 GMRES 收敛。
+同时 $M$ 可以利用 FFT 直接法快速求解。
+
+\subsubsection{ILU 分解预处理}
+
+不完全 LU 分解（ILU(0)）保持与 $A$ 相同的稀疏模式，
+将预处理系统的条件数显著降低。
+
+\subsubsection{多层方法}
+
+利用粗网格解作为预处理，通过多尺度信息加速收敛。
+
+本文主要关注无预处理的 GMRES 与 FFT 直接法的对比，
+以揭示两种方法的基本性能差异。预处理方法作为未来工作方向。

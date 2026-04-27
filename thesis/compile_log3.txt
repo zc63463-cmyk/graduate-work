@@ -1,0 +1,227 @@
+﻿This is XeTeX, Version 3.141592653-2.6-0.999998 (MiKTeX 26.2) (preloaded format=xelatex.fmt)
+ restricted \write18 enabled.
+entering extended mode
+(main.tex
+LaTeX2e <2025-11-01>
+L3 programming layer <2026-03-20>
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/ctex\ctexart.cls
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/ctex/config\ctexbackend
+.cfg)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/l3kernel\expl3.sty
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/l3backend\l3backend-xet
+ex.def))
+Document Class: ctexart 2022/07/14 v2.5.10 Chinese adapter for class article (C
+TEX)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/ctex\ctexhook.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/ctex\ctexpatch.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/base\fix-cm.sty
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/base\ts1enc.def))
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/ctex/config\ctexopts.cf
+g) (C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/base\article.cls
+Document Class: article 2025/01/22 v1.4n Standard LaTeX document class
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/base\size12.clo))
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/ctex/engine\ctex-engine
+-xetex.def
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/xelatex/xecjk\xeCJK.sty
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/l3packages/xtemplate\xt
+emplate.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/fontspec\fontspec.sty
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/l3packages/xparse\xpars
+e.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/fontspec\fontspec-xetex
+.sty (C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/base\fontenc.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/fontspec\fontspec.cfg))
+) (C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/xelatex/xecjk\xeCJK.cfg)))
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/zhnumber\zhnumber.sty
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/zhnumber\zhnumber-utf8.
+cfg))
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/ctex/scheme\ctex-scheme
+-chinese-article.def
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/ctex/config\ctex-name-u
+tf8.cfg))
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/ctex/fontset\ctex-fonts
+et-windows.def))
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/ctex/config\ctex.cfg)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/amsmath\amsmath.sty
+For additional information on amsmath, use the `?' option.
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/amsmath\amstext.sty
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/amsmath\amsgen.sty))
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/amsmath\amsbsy.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/amsmath\amsopn.sty))
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\amssymb.sty
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\amsfonts.sty))
+ (C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/amscls\amsthm.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/jknappen\mathrsfs.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/graphics\graphicx.sty
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/graphics\keyval.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/graphics\graphics.sty
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/graphics\trig.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/graphics-cfg\graphics.c
+fg)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/graphics-def\xetex.def)
+))
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/booktabs\booktabs.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/tools\tabularx.sty
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/tools\array.sty))
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/multirow\multirow.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/float\float.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/hyperref\hyperref.sty
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/generic/iftex\iftex.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/kvsetkeys\kvsetkeys.sty
+)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/generic/kvdefinekeys\kvdefine
+keys.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/generic/pdfescape\pdfescape.s
+ty
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/generic/ltxcmds\ltxcmds.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/generic/pdftexcmds\pdftexcmds
+.sty
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/generic/infwarerr\infwarerr.s
+ty)))
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/hycolor\hycolor.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/hyperref\nameref.sty
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/refcount\refcount.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/generic/gettitlestring\gettit
+lestring.sty
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/kvoptions\kvoptions.sty
+)))
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/etoolbox\etoolbox.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/generic/stringenc\stringenc.s
+ty) (C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/hyperref\pd1enc.def
+) (C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/generic/intcalc\intcalc.sty
+) (C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/hyperref\puenc.def)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/url\url.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/generic/bitset\bitset.sty
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/generic/bigintcalc\bigintcalc
+.sty)))
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/hyperref\hxetex.def
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/rerunfilecheck\rerunfil
+echeck.sty
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/generic/uniquecounter\uniquec
+ounter.sty)))
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/cite\cite.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/algorithms\algorithm.st
+y (C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/base\ifthen.sty))
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/algorithms\algorithmic.
+sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/listings\listings.sty
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/listings\lstpatch.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/listings\lstmisc.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/listings\listings.cfg))
+
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/xelatex/xecjk\xeCJK-listings.
+sty)
+==> First Aid for listings.sty no longer applied!
+    Expected:
+        2024/09/23 1.10c (Carsten Heinz)
+    but found:
+        2025/11/14 1.11b (Carsten Heinz)
+    so I'm assuming it got fixed.
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/xcolor\xcolor.sty
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/graphics-cfg\color.cfg)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/graphics\mathcolor.ltx)
+) (C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/geometry\geometry.sty
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/generic/iftex\ifvtex.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/geometry\geometry.cfg))
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/caption\caption.sty
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/caption\caption3.sty))
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/caption\subcaption.sty)
+ (C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/enumitem\enumitem.sty)
+ (C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/fancyhdr\fancyhdr.sty)
+ (C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/titlesec\titlesec.sty)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/listings\lstlang1.sty)
+(main.aux (chapters/1_introduction.aux) (chapters/2_math_preliminary.aux)
+(chapters/3_fft_direct.aux) (chapters/4_helmholtz.aux) (chapters/5_gmres.aux)
+(chapters/6_experiments.aux) (chapters/7_conclusion.aux)) (main.out) (main.out)
+*geometry* driver: auto-detecting
+*geometry* detected driver: xetex
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsa.fd)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsb.fd)
+(C:\Users\20564\AppData\Local\Programs\MiKTeX\tex/latex/jknappen\ursfs.fd)
+[1] (main.toc [2] [3] [4]) [5] (chapters/1_introduction.tex [6]) [7]
+(chapters/2_math_preliminary.tex [8]
+
+LaTeX Font Warning: Font shape `TU/SimSun(0)/b/it' undefined
+(Font)              using `TU/SimSun(0)/b/n' instead on input line 121.
+
+[9]
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 163.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `subscript' on input line 163.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 163.
+
+[10]
+Overfull \hbox (89.54149pt too wide) detected at line 205
+[][][]\OML/cmm/m/it/12 R[]v \OT1/cmr/m/n/12 = [] [] + []\OML/cmm/m/it/12 v \OT1
+/cmr/m/n/12 + \OML/cmm/m/it/12 O\OT1/cmr/m/n/12 (\OML/cmm/m/it/12 h[]\OT1/cmr/m
+/n/12 ) = \OML/cmm/m/it/12 v \OT1/cmr/m/n/12 + []\OMS/cmsy/m/n/12 r[]\OML/cmm/m
+/it/12 v \OT1/cmr/m/n/12 + [] [] + \OML/cmm/m/it/12 O\OT1/cmr/m/n/12 (\OML/cmm/
+m/it/12 h[]\OT1/cmr/m/n/12 )  []
+
+Overfull \hbox (55.48134pt too wide) detected at line 253
+[][][][][][] \OT1/cmr/m/n/12 = [](\OML/cmm/m/it/12 u[] \OT1/cmr/m/n/12 + \OML/c
+mm/m/it/12 u[] \OT1/cmr/m/n/12 + \OML/cmm/m/it/12 u[] \OT1/cmr/m/n/12 + \OML/cm
+m/m/it/12 u[] \OMS/cmsy/m/n/12 ^^@ \OT1/cmr/m/n/12 2\OML/cmm/m/it/12 u[] \OMS/c
+msy/m/n/12 ^^@ \OT1/cmr/m/n/12 2\OML/cmm/m/it/12 u[] \OMS/cmsy/m/n/12 ^^@ \OT1/
+cmr/m/n/12 2\OML/cmm/m/it/12 u[] \OMS/cmsy/m/n/12 ^^@ \OT1/cmr/m/n/12 2\OML/cmm
+/m/it/12 u[] \OT1/cmr/m/n/12 + 4\OML/cmm/m/it/12 u[]\OT1/cmr/m/n/12 ) + \OML/cm
+m/m/it/12 O\OT1/cmr/m/n/12 (\OML/cmm/m/it/12 h[]\OT1/cmr/m/n/12 )
+
+Overfull \hbox (37.82054pt too wide) detected at line 262
+[][][]\OML/cmm/m/it/12 L[]v[] \OT1/cmr/m/n/12 = [] []
+[11] [12] [13] [14] [15]) [16] (chapters/3_fft_direct.tex [17] [18] [19]
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 196.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `subscript' on input line 196.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 196.
+
+[20] [21]) [22] (chapters/4_helmholtz.tex [23]) [24] (chapters/5_gmres.tex
+[25] [26] [27] [28]) [29] (chapters/6_experiments.tex [30] [31] [32] [33]
+[34]
+Overfull \hbox (0.32964pt too wide) in paragraph at lines 272--275
+[]\TU/SimSun(0)/m/n/12 本 实 验 考 察 不 同 波 数 $\OML/cmm/m/it/12 k$ \TU/SimSun(0)/m/n
+/12 对 求 解 效 果 的 影 响。|  取 $\OML/cmm/m/it/12 n \OT1/cmr/m/n/12 = 33\OML/cmm/m/it/
+12 ; \OT1/cmr/m/n/12 65\OML/cmm/m/it/12 ; \OT1/cmr/m/n/12 129$\TU/SimSun(0)/m/n
+/12 ，| $\OML/cmm/m/it/12 k[] \OT1/cmr/m/n/12 = 0\OML/cmm/m/it/12 ; \OT1/cmr/m/n
+/12 1\OML/cmm/m/it/12 ; \OT1/cmr/m/n/12 10\OML/cmm/m/it/12 ; \OT1/cmr/m/n/12 10
+0\OML/cmm/m/it/12 ; \OT1/cmr/m/n/12 1000$\TU/SimSun(0)/m/n/12 ，|
+[35] [36] [37] [38] [39] [40] [41]
+Overfull \hbox (5.03806pt too wide) in paragraph at lines 521--523
+[]\TU/lmr/m/n/12 FACR(l) \TU/SimSun(0)/m/n/12 算 法 的 性 能 依 赖 于 循 环 约 化 步 数 $\OML
+/cmm/m/it/12 l$ \TU/SimSun(0)/m/n/12 的 选 择。|  由 定 理 [][]\TU/lmr/m/n/12 3.1[][]\
+TU/SimSun(0)/m/n/12 ，|  最 优 $\OML/cmm/m/it/12 l \OMS/cmsy/m/n/12 ^^Y [][]\OT1/c
+mr/m/n/12 ([][] \OML/cmm/m/it/12 N\OT1/cmr/m/n/12 )$\TU/SimSun(0)/m/n/12 。| 
+[42] [43] [44]) [45] [46] (chapters/7_conclusion.tex [47]) [48] (main.bbl
+[49]) [50] [51] (main.aux (chapters/1_introduction.aux)
+(chapters/2_math_preliminary.aux) (chapters/3_fft_direct.aux)
+(chapters/4_helmholtz.aux) (chapters/5_gmres.aux) (chapters/6_experiments.aux)
+xelatex : miktex-dvipdfmx: major issue: So far, you have not checked for MiKTeX updates.
+所在位置 行:1 字符: 326
++ ... ile_log2.txt ; xelatex -interaction=nonstopmode main.tex 2>&1 | Out-F ...
++                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (miktex-dvipdfmx...MiKTeX updates.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(chapters/7_conclusion.aux))
+
+LaTeX Font Warning: Some font shapes were not available, defaults substituted.
+
+ )
+(see the transcript file for additional information)
+Output written on main.pdf (51 pages).
+Transcript written on main.log.
+xelatex: major issue: So far, you have not checked for MiKTeX updates.
