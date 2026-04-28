@@ -357,7 +357,7 @@ $R_h(-\nabla^2 u)$ 中的 $O(h^2)$ 误差为 $-\frac{h^2}{12}\nabla^4 u$，
 
 \subsubsection{Fourier 特征值的推导}
 
-为严格证明四阶精度，采用 Fourier 分析方法。
+为建立四阶一致性，采用 Fourier 分析方法。
 设离散模式为 $u_{i,j} = e^{\mathrm{i}(\alpha i + \beta j)}$，
 其中 $\alpha = p\pi h$，$\beta = q\pi h$（$h$ 为步长，$p,q$ 为模式指标）。
 
@@ -388,7 +388,7 @@ $R_h(-\nabla^2 u)$ 中的 $O(h^2)$ 误差为 $-\frac{h^2}{12}\nabla^4 u$，
   \end{equation}
 \end{lemma}
 
-\subsubsection{四阶精度的严格证明}
+\subsubsection{四阶精度的 Fourier 分析}
 
 \begin{theorem}[四阶精度]
   \label{thm:4th_order}

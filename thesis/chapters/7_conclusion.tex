@@ -32,7 +32,7 @@
         将非对称矩阵 $G$ 对称化为 $S = D^{-1}GD$，
         使其被 DCT-I 对角化，从而在 FFT 框架内统一处理 Dirichlet 和 Neumann 边界条件。
 
-  \item \textbf{六阶格式不可行的证明}：通过 Fourier 特征值分析严格证明了，
+  \item \textbf{三参数九点修正族六阶不可达性}：通过 Fourier 特征值分析验证了，
         对于九点紧致差分格式的三参数修正族
         $(-L_h - \alpha h^2 L_h^{(5)})u + \sigma(R_h+\beta h^2 I)u = (R_h+\gamma h^2 I)f$，
         不存在统一的常数 $(\alpha, \beta, \gamma)$ 使得截断误差达到 $O(h^6)$。
