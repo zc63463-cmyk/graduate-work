@@ -110,7 +110,7 @@ $\kappa^2$ 的加入对迭代法是"帮助"而非"阻碍"。
 对于 Poisson 方程（$\sigma=0$），$d_{0,0}=0$ 导致奇异性，
 需要兼容条件 $\sum w_iw_jf_{i,j}=0$ 且令 $\hat{u}_{0,0}=0$；
 对于 modified Helmholtz（$\sigma=+\kappa^2$），$d_{0,0}=\kappa^2 > 0$，
-分母恒正，无奇异性，求解无条件稳定。
+分母恒正，无奇异性，不存在零模态小分母问题。
 
 \subsubsection{FFT9 格式}
 
@@ -120,7 +120,7 @@ $\kappa^2$ 的加入对迭代法是"帮助"而非"阻碍"。
 \end{equation}
 因 $-\hat{\lambda}_L > 0$（$L_h \approx \Delta$，$\hat{\lambda}_L < 0$）
 且 $\hat{\lambda}_R > 0$，故 $D_{p,q}^{\mathrm{raw}} > 0$ 恒成立，
-FFT9 求解无条件稳定。
+FFT9 频域求解不会出现 true Helmholtz 型小分母奇异。
 
 \subsection{True Helmholtz 方程（$\sigma = -\kappa^2$）}
 
@@ -199,9 +199,9 @@ True Helmholtz 矩阵不定，CG 不适用（CG 要求正定）。
 分母最小值 & $\geq \kappa^2 > 0$ & 可能为零 \\
 共振 & 不可能 & $\lambda_{p,q}=\kappa^2$ \\
 $\kappa^2\!\uparrow$ 条件数 & 减小 & 增大或趋于 $\infty$ \\
-$\kappa^2\!\uparrow$ 迭代次数 & 减少 & 增加 \\
+$\kappa^2\!\uparrow$ 迭代次数 & 通常减少 & 近共振时增加或停滞 \\
 适用迭代法 & CG, GMRES & MINRES, GMRES \\
-FFT 求解稳定性 & 无条件稳定 & 近共振时不稳定 \\
+FFT 频域分母风险 & 分母恒正，无小分母共振 & 近共振时不稳定 \\
 \bottomrule
 \end{tabular}
 \end{table}

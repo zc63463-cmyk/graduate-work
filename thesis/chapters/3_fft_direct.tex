@@ -41,7 +41,7 @@ FA 方法利用离散正弦变换（DST-I，Dirichlet BC）或离散余弦变换
 \begin{algorithmic}[1]
 \REQUIRE 网格大小 $n$，右端项 $f$，参数 $\sigma$
 \ENSURE 解 $u$
-\STATE 构建右端向量 $F_{i,j} = f(x_i, y_j)$，减去边界贡献
+\STATE 构建右端向量 $F_{i,j} = f(x_i, y_j)$，并入 Dirichlet 边界贡献
 \STATE 2D DST-I 变换：$\hat{F} = \mathrm{DST}(F)$
 \STATE 计算频域除数：$D_{p,q} = (\mu_p + \mu_q)/h^2 + \sigma$
 \STATE 频域求解：$\hat{U}_{p,q} = \hat{F}_{p,q} / D_{p,q}$
@@ -167,7 +167,11 @@ FACR(l) 算法结合了 CR 和 FA 的优势。
   为 $O(N^2 \log\log N)$。
   
   \textbf{注意}：本文当前实现采用 DST + Thomas 算法的混合方案，
-  实际复杂度为 $O(N^2 \log N)$。经典 $O(N^2 \log\log N)$ 复杂度
+  实际复杂度为
+  \[
+    O(N^2 \log N).
+  \]
+  经典 $O(N^2 \log\log N)$ 复杂度
   需要递归 CR（而非单步 Thomas 回代）的精确实现，
   这一点作为理论展望，不在本文实验范围内。
 \end{theorem}
@@ -281,7 +285,7 @@ $\hat{\Lambda}_R = \mathrm{diag}(\hat{\lambda}_R(p,q))$ 为对角矩阵，
 \begin{remark}
   对于 modified Helmholtz（$\sigma=+\kappa^2$），
   因 $-\hat{\lambda}_L > 0$ 且 $\hat{\lambda}_R > 0$，原始频域除数 $D_{p,q}^{\mathrm{raw}} = -\hat{\lambda}_L+\sigma\hat{\lambda}_R > 0$ 恒成立，
-  矩阵正定，求解无条件稳定。
+  矩阵正定，频域求解不会出现 true Helmholtz 型小分母奇异。
   对于 true Helmholtz（$\sigma=-\kappa^2$），
   当 $-\hat{\lambda}_L(p,q) \approx \kappa^2\hat{\lambda}_R(p,q)$ 时分母接近零，
   出现近共振现象。

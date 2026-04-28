@@ -221,8 +221,9 @@ GMRES 作为非对称求解器，可以自然处理此类非对称系统。
 
 \subsection{预处理策略}
 
-对于 true Helmholtz 方程（$\sigma=-\kappa^2$），大波数 $\kappa$ 导致
-离散矩阵不定且条件数增大，GMRES 的收敛速度显著下降。常用的预处理策略包括：
+对于 true Helmholtz 方程（$\sigma=-\kappa^2$），当 $\kappa^2$ 接近离散 Laplacian 特征值时，
+矩阵会出现近共振和病态性，无预处理 GMRES 的收敛可能停滞或高度依赖参数。
+实际大规模求解通常需要预处理策略，例如：
 
 \subsubsection{Shifted Laplacian 预处理}
 

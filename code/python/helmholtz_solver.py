@@ -345,7 +345,8 @@ def _build_rhs_and_grid(n, f_func, bc_func, bc_x, bc_y, sx=1.0, sy=1.0):
     """
     Build RHS array on the appropriate grid for given BC types.
 
-    For Dirichlet: f evaluated at interior nodes, with boundary terms subtracted.
+    For Dirichlet: f evaluated at interior nodes, with Dirichlet boundary
+                   terms moved to the RHS with a plus sign.
     For Neumann:   f evaluated at ALL nodes (including boundaries), scaled by
                    d_scale^{-1} for symmetrization. No h^2 factor included --
                    it is added in CR/FACR solvers. Ghost-point approach makes
@@ -385,7 +386,7 @@ def _build_rhs_and_grid(n, f_func, bc_func, bc_x, bc_y, sx=1.0, sy=1.0):
         bc_values = {'bc_l': None, 'bc_r': None, 'bc_b': None, 'bc_t': None}
 
     elif bc_x == 'D' and bc_y == 'D':
-        # Pure Dirichlet: evaluate f at interior nodes, subtract boundary contributions
+        # Pure Dirichlet: evaluate f at interior nodes and add boundary contributions.
         x_int = x_node[1:-1]
         y_int = y_node[1:-1]
         X, Y = np.meshgrid(x_int, y_int, indexing='ij')
@@ -908,12 +909,17 @@ def apply_Rh_full(G):
 
 def compute_bc_correction_9pt(n, bc_func, x, y, h, bc_x='D', bc_y='D', sigma=0.0):
     """
-    Compute BC correction for FFT9 solver: (-L_h + sigma R_h)u = R_h f.
+    Compute BC correction for the FFT9 solver.
 
-    For non-homogeneous Dirichlet BC, boundary values must be moved from
-    LHS to RHS. Two contributions:
-      1. L_h boundary: stencil [1,4,1;4,-20,4;1,4,1]/(6h²) → subtracted (negative)
-      2. -sigma R_h boundary: stencil [0,1/12,0;1/12,2/3,1/12;0,1/12,0] → sign depends on sigma
+    The thesis writes the compact system as
+        (-L_h + sigma R_h) u = R_h f.
+    This implementation solves the equivalent system multiplied by -1:
+        ( L_h - sigma R_h) u = -R_h f.
+
+    Thus the original physical-space correction
+        + L_IB g_B - sigma R_IB g_B
+    appears in this function with the opposite sign:
+        - L_IB g_B + sigma R_IB g_B.
 
     Corner diagonal neighbors (coeff 1/(6h²) in L_h) are double-counted by
     the x and y boundary loops; a correction is added back at the end.
@@ -1039,7 +1045,8 @@ def fft9_helmholtz(n, f_func, bc_func, k2=None, bc_type='dirichlet',
 
         lam_L = (1.0 / (6.0 * h**2)) * (-20.0 + 8.0 * CK + 8.0 * CL + 4.0 * CK * CL)
         lam_R4 = 2.0 / 3.0 + (1.0 / 6.0) * (CK + CL)
-        # Denom: (L_h - sigma R_h) in Fourier space → û = -ĝ / (λ̂_L - σ λ̂_R)
+        # Denom for the equivalent system (L_h - sigma R_h);
+        # Rg already contains -R_h f plus the corresponding boundary correction.
         denom = lam_L - sigma * lam_R4
 
         U_hat = np.zeros((N, N))

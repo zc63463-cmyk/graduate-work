@@ -1,219 +1,214 @@
 # Final Polish Report
 
 **项目**：矩形区域上 Poisson/Helmholtz 方程的 FFT 快速求解器与迭代法对比研究  
-**日期**：2026-04-28  
-**版本**：V2.1（最终提交清理版）  
-**执行人**：WorkBuddy Agent
+**日期**：2026-04-29  
+**版本**：V2.3，实验章节删减收束与交付一致性清理版  
+**当前分支**：`revise-sigma-fft9-krylov`  
+**最终 PDF**：`thesis/main.pdf`，52 pages  
+**最终状态**：READY TO SUBMIT
 
 ---
 
-## 1. Repository Status
+## 1. 总体结论
 
-- **Branch**：`revise-sigma-fft9-krylov`
-- **Latest commit**：`1dd7a82 fix: de-risk 'strict proof' wording and M5 resonance in Ch2+Ch7`
-- **Git status**（当前）：
-  - Untracked: `FINAL_POLISH_REPORT.md`, `code/python/pytest.ini`, 临时日志文件
-  - 无 modified，无 deleted
+本轮清理的核心是把第 6 章从旧版 16 个历史实验收束为 6 个有脚本、CSV、图表和正文结论支撑的核心实验，并同步收紧摘要、引言、算法章节、GMRES 章节、结论和 Lean 附录的表述边界。
+
+当前论文主线已经稳定为：在统一的 $(-\Delta+\sigma)u=f$ 框架下，验证规则矩形区域上 FFT 快速直接法的离散正确性、收敛阶和边界处理，并通过 modified/true Helmholtz 的谱指标与 near-resonance 实验观察 $\sigma$ 符号对求解难度的影响。
+
+论文不再声称完成大范围系统性能比较、完整预处理迭代法研究、FFT9 的 Neumann/mixed 四阶推广，或 Lean 4 的完整 PDE 全局误差证明。
 
 ---
 
-## 2. Tests
+## 2. 验证结果
 
 ### Python 测试
 
-| 测试 | 状态 | 命令 | 输出 |
-|------|------|------|------|
-| pytest | ✅ PASS | `python -m pytest -q` | **103 passed, 2 skipped, 0 failed** |
-| verify_fft9_expansion.py | ✅ PASS | `python verify_fft9_expansion.py` | h² 项消去，-λ_L/λ_R = ξ²+η²+O(h⁴) 确认 |
+运行目录：
 
-**运行环境**：Windows 11 + Python subprocess（Miniconda3）
-
-**pytest.ini 已添加**：
-```ini
-[pytest]
-testpaths = tests
-norecursedirs = _archive .git .venv __pycache__
-python_files = test_*.py
-python_classes = Test*
-python_functions = test_*
+```powershell
+C:\Users\20564\Desktop\Graduate\论文收集\code\python
 ```
 
-默认 `python -m pytest -q` 不再收集 `_archive/` 目录。归档旧测试（2 个 GMRES 奇异矩阵失败）不属于活跃测试范围。
+命令：
+
+```powershell
+python -m pytest -q
+```
+
+结果：
+
+```text
+103 passed, 2 skipped, 2 warnings
+```
+
+两条 warning 来自 Neumann Poisson compatibility 测试中故意触发的不相容 RHS，属于预期测试行为。
 
 ### FFT9 展开验证
 
-| 验证项 | 结果 |
-|--------|------|
-| h² 项系数（有效特征值） | **0**（消去确认） |
-| h⁰ 项 | η²+ξ²（匹配 ξ²+η²） |
-| h² 项 target | -(ξ²+η²)²/12，**Match: True** |
-| h⁴ 项 target | (ξ²+η²)(ξ⁴+4ξ²η²+η⁴)/360，**Match: True** |
-| -λ_L/λ_R | ξ²+η²+O(h⁴)，**四阶精度确认** |
+命令：
 
-### Lean 4 最终验收
-
-| 验证项 | 结果 |
-|--------|------|
-| lake build | ✅ **Build completed successfully (3 jobs)** |
-| lake build return code | **0** |
-| sorry/admit/axiom/unsafe | **0 matches** |
-| Lean 版本 | leanprover/lean4:v4.29.1 |
-| Mathlib | v4.29.1 (prebuilt olean) |
-| linter 警告 | 12 个 unused simp arguments（无害，可优化） |
-
-**验证的定理**：
-
-| Lean theorem | 数学含义 | 证明策略 |
-|-------------|----------|----------|
-| c4_num_mode_10_real | c₄(1,0,γ) = 60γ+3 | ring |
-| c4_num_mode_11_real | c₄(1,1,γ) = 120γ-4 | ring |
-| sixth_order_impossible_real | 不存在统一 γ | linarith |
-| c2_helmholtz_forces_neg_gamma | c₂=0 在 Helmholtz 推出 α=-γ | linarith |
-| poisson_no_sixth_order_real | Poisson 三参数族不可达六阶 | ring + linarith |
-| helmholtz_no_sixth_order_real | Helmholtz 三参数族不可达六阶 | ring + linarith |
-
-**Lean 4 定位声明**：Lean 4 验证覆盖的是代数系数矛盾，不包含完整 PDE 截断误差或全局收敛理论。
-
----
-
-## 3. LaTeX Build
-
-### XeLaTeX 最终编译
-
-| 指标 | 结果 |
-|------|------|
-| 编译命令 | **xelatex + bibtex + xelatex ×2** |
-| Engine | **This is XeTeX, Version 3.141592653-2.6-0.999998 (MiKTeX 26.2)** |
-| 错误 | **0** |
-| 警告 | 22（全部 `hyperref` 无害警告：章节标题数学公式无法放入 PDF 书签） |
-| 重复标签 | **0** |
-| Citation undefined | **0** |
-| Reference undefined | **0** |
-| PDF 大小 | **2,339 KB** |
-
----
-
-## 4. Mathematical Fixes
-
-### P0 措辞降风险
-
-| 编号 | 原文 | 修改后 | 位置 | 状态 |
-|------|------|--------|------|------|
-| P0-1 | "严格的四阶精度证明" | "Fourier symbol / Taylor 展开层面的四阶一致性推导" | 报告已修正 | ✅ |
-| P0-2 | "六阶不可行性证明" | "三参数九点修正族六阶不可达性" | 论文已正确 | ✅ |
-| P0-3 | "Lean 4 证明了理论正确性" | "辅助形式化验证（覆盖代数恒等式与系数矛盾）" | 论文已正确 | ✅ |
-| P0-4 | "FACR 复杂度 O(N²loglogN)" | 论文已区分 classical FACR 理论 vs 本文实现 O(N²logN) | 无需修改 | ✅ |
-| M5 | "Modified H. 的共振条件 λ+κ²=0 永不成立" | "Modified H. 不存在共振（因 λ+κ² > 0 恒正）" | `7_conclusion.tex` | ✅ 已修复 |
-| M4a | "为严格证明四阶精度" | "为建立四阶一致性" | `2_math_preliminary.tex` | ✅ 已修复 |
-| M4b | "四阶精度的严格证明" | "四阶精度的 Fourier 分析" | `2_math_preliminary.tex` | ✅ 已修复 |
-| M4c | "六阶格式不可行的证明：通过 Fourier 特征值分析严格证明了" | "三参数九点修正族六阶不可达性：通过 Fourier 特征值分析验证了" | `7_conclusion.tex` | ✅ 已修复 |
-
-### 数学残留扫描
-
-| 扫描项 | matches | 状态 |
-|--------|---------|------|
-| B = tridiag(-1,4,-1) | 0 | ✅ 无残留 |
-| Modified H. λ+κ²=0 共振条件 | 0 | ✅ 无残留 |
-| FACR O(N²loglogN) 未限定 | 0（6 matches 均为正确标注） | ✅ 全部正确 |
-| "严格证明" 过强措辞 | 0（已全部修复） | ✅ 已清理 |
-| Lean 证明理论 | 0 | ✅ 无残留 |
-
----
-
-## 5. Figures and Experiments
-
-### 实验脚本（5个 + utils）
-
-| 实验 | 状态 | CSV | PNG |
-|------|------|-----|-----|
-| exp00 | ✅ PASS | ✅ | — |
-| exp01 | ✅ PASS | ✅ | ✅ |
-| exp02 | ✅ PASS | ✅ | ✅ |
-| exp03 | ✅ PASS | ✅ | ✅ |
-| exp04 | ✅ PASS | ✅ | ✅ (3张) |
-
----
-
-## 6. Bibliography
-
-- **总计**：41 条参考文献，0 citation undefined。
-
----
-
-## 7. Archive Test Handling
-
-- **方案**：添加 `pytest.ini`（方案 A）
-- **配置**：`testpaths = tests`，`norecursedirs = _archive .git .venv __pycache__`
-- **效果**：默认 `python -m pytest -q` 不再收集 `_archive/` 目录
-- **结果**：103 passed, 2 skipped, 0 failed（return code 0）
-- **归档旧测试**：2 个 GMRES 奇异矩阵失败仍存在于 `_archive/`，但不影响活跃测试
-
----
-
-## 8. Remaining Risks
-
-### 低风险 💡
-
-| 风险 | 说明 | 缓解措施 |
-|------|------|----------|
-| _archive/ 归档代码存在旧失败测试 | 旧 GMRES 测试使用奇异矩阵 | 已通过 pytest.ini 排除，活跃测试全部通过 |
-| 图表风格未统一 | 6 张实验图为 matplotlib 默认风格 | 如需更高视觉质量，可统一字体/线宽/marker |
-| 答辩 PPT 未制作 | 仅有大纲，无实际幻灯片 | 使用 PowerPoint/Beamer 按大纲制作 |
-| Lean 4 linter 警告 | 12 个 unused simp arguments | 不影响正确性，可后续优化 |
-
----
-
-## 9. Recommended Commit
-
-```bash
-# 必须提交
-git add FINAL_POLISH_REPORT.md
-git add code/python/pytest.ini
-
-# 视情况提交（如仓库已跟踪 PDF 或导师要求）
-# git add thesis/main.pdf
-
-git commit -m "chore: add pytest.ini and final validation report V2.1
-
-- pytest.ini: exclude _archive/ from test collection
-- Default pytest now passes: 103 passed, 2 skipped, 0 failed
-- All validations confirmed: FFT9, Lean 4, XeLaTeX"
+```powershell
+python verify_fft9_expansion.py
 ```
 
-### 不应提交的文件
+结果：有效特征值的 $h^2$ 项为 0，脚本确认 `Is zero? True`，FFT9 四阶展开验证通过。
 
-以下为临时日志/中间文件，不应提交：
-- `code/python/final_*.txt` — pytest/FFT9 临时输出
-- `code/lean4_formalization/final_*.txt` — Lean 临时输出
-- `thesis/_check_log.py` — 临时脚本
-- `thesis/compile_*.txt`, `thesis/final_*.txt` — 编译临时输出
-- `PROJECT_REPORT_V1.0.md` — 旧版报告（已被 V1.1 替代）
-- `*.aux`, `*.log`, `*.bbl`, `*.blg` — LaTeX 中间文件
+### Lean 4
+
+运行目录：
+
+```powershell
+C:\Users\20564\Desktop\Graduate\论文收集\code\lean4_formalization
+```
+
+命令：
+
+```powershell
+lake build
+```
+
+结果：
+
+```text
+Build completed successfully (3 jobs).
+```
+
+仍有 unused simp argument warnings；另有 `.lake/packages/proofwidgets` 依赖目录 local changes 提示。二者均不影响 Lean 源文件构建成功，不纳入本轮提交。
+
+### LaTeX 与 PDF
+
+运行目录：
+
+```powershell
+C:\Users\20564\Desktop\Graduate\论文收集\thesis
+```
+
+命令：
+
+```powershell
+xelatex -interaction=nonstopmode main.tex
+bibtex main
+xelatex -interaction=nonstopmode main.tex
+xelatex -interaction=nonstopmode main.tex
+```
+
+结果：
+
+```text
+Output written on main.pdf (52 pages).
+0 LaTeX error
+0 undefined citation/reference
+0 multiply defined label
+0 Missing character
+0 Overfull \hbox
+```
+
+日志中仍有 SimSun 字体替代 warning 和 hyperref bookmark 中数学符号移除 warning，不影响正文渲染、引用解析或 PDF 生成。
+
+PDF 已用 `pdftoppm` 渲染第 6 章关键页和附录表 11 所在页目检：第 6 章表格/图像无裁切、无重叠；Lean 附录表 11 已固定在 `\textwidth` 内，状态列不再越界。
 
 ---
 
-## 附录：最终验收检查清单
+## 3. 第 6 章实验闭环
 
-- [x] git status 查看
-- [x] git log 查看（4 commits on `revise-sigma-fft9-krylov`）
-- [x] **pytest 默认命令通过**：`python -m pytest -q` → 103 passed, 2 skipped, 0 failed
-- [x] **pytest.ini 已添加**：`_archive/` 默认排除
-- [x] **verify_fft9_expansion.py 通过**：h² 项消去，O(h⁴) 确认
-- [x] **Lean 4 lake build 通过**：Build completed successfully, 0 sorry/admit/axiom/unsafe
-- [x] **XeLaTeX 编译 0 error**，0 citation undefined，0 reference undefined
-- [x] 重复标签检查：0
-- [x] P0-1 ~ P0-4 措辞审查通过
-- [x] M1-M5 数学残留扫描通过
-- [x] M4a-c "严格证明"过强措辞已修复
-- [x] 参考文献核查（41 条，0 citation undefined）
-- [x] Lean 4 附录创建并集成
-- [x] 答辩 PPT 大纲 + Q&A 创建
-- [x] Final Polish Report 更新至 V2.1
+第 6 章当前只保留 6 个核心实验：
+
+| 实验 | 支撑脚本 | CSV | 图像/表格 |
+|------|----------|-----|-----------|
+| 实验一：FFT 解与 sparse direct 解的一致性 | `exp00_fft_vs_sparse.py` | `exp00_fft_vs_sparse.csv` | 正文表格 |
+| 实验二：二阶与四阶收敛阶验证 | `exp01_convergence.py` | `exp01_convergence.csv` | `exp01_convergence.png` |
+| 实验三：非齐次 Dirichlet 边界验证 | `exp02_nonhom_bc.py` | `exp02_nonhom_bc.csv` | `exp02_nonhom_bc.png` |
+| 实验四：Neumann 与 mixed 边界验证 | `exp03_neumann_mixed.py` | `exp03_neumann_mixed.csv` | `exp03_neumann_mixed.png` |
+| 实验五：modified/true Helmholtz 谱指标与 Gaussian RHS 下 GMRES 行为 | `exp04_modified_vs_true.py` | `exp04_modified_vs_true.csv` | `exp04_min_denom_vs_sigma.png`, `exp04_spectral_indicator_vs_sigma.png`, `exp04_gmres_iters_vs_sigma.png` |
+| 实验六：true Helmholtz near-resonance 扫描 | `exp05_true_helmholtz_resonance.py` | `exp05_resonance.csv` | `exp05_resonance.png` |
+
+每个实验均补充或保留了结论边界：
+
+- 实验一证明离散 FFT-vs-sparse 一致性，不证明连续 PDE 收敛阶。
+- 实验二验证收敛轨道，不用于判断 GMRES 行为。
+- 实验三验证非齐次 Dirichlet RHS/边界处理，不涉及 Neumann/mixed 九点紧致推广。
+- 实验四验证受支持五点求解器的 Neumann/mixed 处理，不证明 FFT9 Neumann/mixed 四阶性。
+- 实验五观察 Gaussian RHS 下无预处理 GMRES 的参数敏感性，不构成完整迭代法性能研究。
+- 实验六只支持 true Helmholtz near-resonance 结论，不外推为一般波数性能比较。
+
+旧版“实验七”至“实验十六”的结构、弱支撑图表和大范围性能比较表述未在正文中保留。
+
+---
+
+## 4. 已完成关键修复
+
+### 论文正文
+
+- 引言中明确：FA、CR、FACR-like 与五点基准覆盖 Dirichlet、Neumann 和 mixed；FFT9 仅针对 Dirichlet 边界实现并验证。
+- FACR 复杂度表述已区分：当前 FACR-like 实现为 $O(N^2\log N)$；经典 FACR 的 $O(N^2\log\log N)$ 仅作为理论背景。
+- GMRES 已限定为无预处理 Krylov 基线；true Helmholtz 近共振处改为“可能停滞或依赖参数/预处理”的保守表述。
+- 第 6 章所有实验改为 6 个核心闭环，并加入“不证明什么”的限制句。
+- Lean 附录表 11 改为固定在 `\textwidth` 内，移除 emoji glyph，避免 PDF 右侧越界。
+- README 已创建为最终交付包说明，记录 52 页 PDF、6 个核心实验、exp00-exp05 CSV 与 7 张核心 PNG。
+
+### 代码与数据
+
+- `exp05_resonance.csv` 表头已将 `N` 改为 `n_interior`，避免 PowerShell `Import-Csv` 大小写重复列名问题。
+- `helmholtz_solver.py` 与 `gmres_solver.py` 中 stale “subtract boundary contributions” 注释已改为 add/move to RHS。
+- `cyclic_reduction.py` 保留为 deprecated/historical prototype，但同步修正非齐次 Dirichlet RHS 边界符号，避免误用。
+- `.gitignore` 已增加 `PROJECT_REPORT_V1.0.md` 与 `Problem_To_Update.md`，二者保留本地但不进入最终交付提交。
+
+---
+
+## 5. Git 状态判断
+
+建议纳入最终提交的文件：
+
+```text
+.gitignore
+README.md
+FINAL_POLISH_REPORT.md
+NEXT_DIALOG_EXPERIMENT_RESTRUCTURE.md
+code/python/cyclic_reduction.py
+code/python/gmres_solver.py
+code/python/helmholtz_solver.py
+code/python/experiments/exp05_true_helmholtz_resonance.py
+code/python/experiments/results/exp05_resonance.csv
+thesis/main.tex
+thesis/main.pdf
+thesis/chapters/1_introduction.tex
+thesis/chapters/2_math_preliminary.tex
+thesis/chapters/3_fft_direct.tex
+thesis/chapters/4_helmholtz.tex
+thesis/chapters/5_gmres.tex
+thesis/chapters/6_experiments.tex
+thesis/chapters/7_conclusion.tex
+thesis/chapters/appendix_lean4.tex
+```
+
+不建议提交：
+
+```text
+PROJECT_REPORT_V1.0.md
+Problem_To_Update.md
+thesis/*.aux
+thesis/*.log
+thesis/*.bbl
+thesis/*.blg
+__pycache__
+.lake/packages/proofwidgets
+temporary logs/rendered PNGs
+```
+
+---
+
+## 6. Remaining Risks
+
+High: none.
+
+Medium: none.
+
+Low:
+
+- Lean 构建仍提示 unused simp arguments，可后续作为形式化代码清洁项处理。
+- `.lake/packages/proofwidgets` 依赖目录存在 local changes 提示，本轮未纳入提交。
+- LaTeX 存在字体替代与 hyperref bookmark warning，但最终 PDF 正文、表格和引用均正常。
 
 ---
 
 **Final status: READY TO SUBMIT**
-
----
-
-**报告结束** | 生成时间：2026-04-28 18:45 | 版本：V2.1（最终提交清理版）

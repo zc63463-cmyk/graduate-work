@@ -118,7 +118,7 @@ def run():
         gmres_time_ms = (t1 - t0) * 1000
         
         row = {
-            'n': n, 'N': N, 'h': h,
+            'n': n, 'n_interior': N, 'h': h,
             'p_target': p_target, 'q_target': q_target,
             'lambda_h': lambda_target,
             'delta': delta,
@@ -174,7 +174,7 @@ def run():
             abs_res = np.inf
         
         rows.append({
-            'n': n, 'N': N, 'h': h,
+            'n': n, 'n_interior': N, 'h': h,
             'p_target': p_target, 'q_target': q_target,
             'lambda_h': lambda_target,
             'delta': np.nan,  # not a near-resonance point

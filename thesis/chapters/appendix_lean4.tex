@@ -33,23 +33,25 @@
 
 表~\ref{tab:lean4_theorems} 列出了 Lean 4 中验证的核心定理。
 
-\begin{table}[htbp]
+\begin{table}[H]
 \centering
 \caption{Lean 4 验证定理清单}
 \label{tab:lean4_theorems}
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{llll}
 \toprule
 \textbf{Lean 定理名} & \textbf{数学含义} & \textbf{证明策略} & \textbf{状态} \\
 \midrule
-\texttt{c4\_num\_mode\_10\_real} & $c_4(1,0,\gamma) = 60\gamma + 3$ & \texttt{ring} & ✅ 通过 \\
-\texttt{c4\_num\_mode\_11\_real} & $c_4(1,1,\gamma) = 120\gamma - 4$ & \texttt{ring} & ✅ 通过 \\
-\texttt{sixth\_order\_impossible\_real} & 不存在统一 $\gamma$ 使所有模式 $c_4=0$ & \texttt{ring} + \texttt{linarith} & ✅ 通过 \\
-\texttt{c2\_poisson\_forces\_neg\_gamma} & $c_2=0$ 推出 $\alpha = -\gamma$ & \texttt{linarith} & ✅ 通过 \\
-\texttt{poisson\_no\_sixth\_order\_real} & Poisson 三参数族不可达六阶 & \texttt{ring} + \texttt{linarith} & ✅ 通过 \\
-\texttt{c2\_helmholtz\_forces\_neg\_gamma} & Helmholtz 中 $c_2=0$ 亦推出 $\alpha=-\gamma$ & \texttt{linarith} & ✅ 通过 \\
-\texttt{helmholtz\_no\_sixth\_order\_real} & Helmholtz 三参数族不可达六阶 & \texttt{ring} + \texttt{linarith} & ✅ 通过 \\
+\texttt{c4\_num\_mode\_10\_real} & $c_4(1,0,\gamma) = 60\gamma + 3$ & \texttt{ring} & 通过 \\
+\texttt{c4\_num\_mode\_11\_real} & $c_4(1,1,\gamma) = 120\gamma - 4$ & \texttt{ring} & 通过 \\
+\texttt{sixth\_order\_impossible\_real} & 不存在统一 $\gamma$ 使所有模式 $c_4=0$ & \texttt{ring} + \texttt{linarith} & 通过 \\
+\texttt{c2\_poisson\_forces\_neg\_gamma} & $c_2=0$ 推出 $\alpha = -\gamma$ & \texttt{linarith} & 通过 \\
+\texttt{poisson\_no\_sixth\_order\_real} & Poisson 三参数族不可达六阶 & \texttt{ring} + \texttt{linarith} & 通过 \\
+\texttt{c2\_helmholtz\_forces\_neg\_gamma} & Helmholtz 中 $c_2=0$ 亦推出 $\alpha=-\gamma$ & \texttt{linarith} & 通过 \\
+\texttt{helmholtz\_no\_sixth\_order\_real} & Helmholtz 三参数族不可达六阶 & \texttt{ring} + \texttt{linarith} & 通过 \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 \begin{itemize}[itemsep=2pt]

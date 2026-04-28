@@ -198,10 +198,16 @@ def gmres(A, b, x0=None, tol=1e-6, max_iter=100, restart=30,
             x = x + V[:, :m] @ y
             residuals.append(np.linalg.norm(b - A @ x))
 
+    final_abs = residuals[-1] if residuals else np.linalg.norm(b - A @ x)
+    norm_b = np.linalg.norm(b)
+    final_rel = final_abs / norm_b if norm_b > 0 else float('inf')
+
     info = {
         'success': success,
         'residuals': residuals if return_history else None,
-        'iterations': total_iter
+        'iterations': total_iter,
+        'final_abs_residual': final_abs,
+        'final_relative_residual': final_rel,
     }
     return x, info
 
@@ -371,7 +377,8 @@ def _build_rhs(n, f_func, bc_func, k2, bc_x, bc_y, sx=1.0, sy=1.0):
     """
     Build RHS vector for GMRES solver.
 
-    For Dirichlet: evaluate f at interior nodes, subtract boundary contributions
+    For Dirichlet: evaluate f at interior nodes and move boundary contributions
+                   to the RHS with a plus sign
     For Neumann:   evaluate f at all nodes (including boundaries)
 
     Returns
@@ -395,7 +402,7 @@ def _build_rhs(n, f_func, bc_func, k2, bc_x, bc_y, sx=1.0, sy=1.0):
         X, Y = np.meshgrid(x_int, y_int, indexing='ij')
         F = np.asarray(f_func(X, Y), dtype=float)
 
-        # Subtract boundary contributions
+        # Add Dirichlet boundary contributions after moving them to the RHS.
         bc_l = _eval_bc(bc_func, x_node[0], y_node, n)
         bc_r = _eval_bc(bc_func, x_node[-1], y_node, n)
         bc_b = _eval_bc(bc_func, x_node, y_node[0], n)
@@ -591,6 +598,8 @@ def gmres_helmholtz(n, f_func, bc_func, k2=None, bc_type='dirichlet',
         'residuals': gmres_info['residuals'],
         'time': solve_time,
         'matrix_size': N,
+        'final_abs_residual': gmres_info.get('final_abs_residual'),
+        'final_relative_residual': gmres_info.get('final_relative_residual'),
     }
 
     return U, info
@@ -715,6 +724,8 @@ def gmres_helmholtz_matfree(n, f_func, bc_func, k2=0.0, bc_type='dirichlet',
         'residuals': gmres_info['residuals'],
         'time': solve_time,
         'matrix_size': N,
+        'final_abs_residual': gmres_info.get('final_abs_residual'),
+        'final_relative_residual': gmres_info.get('final_relative_residual'),
     }
 
     return U, info

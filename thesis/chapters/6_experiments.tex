@@ -4,822 +4,307 @@
 \section{数值实验}
 \label{sec:experiments}
 
-本章通过系统的数值实验验证所提算法的正确性和有效性。
-所有实验在 Python 3.x + NumPy + SciPy 环境下完成，
-测试问题为矩形区域 $\Omega = [0,1]^2$ 上的统一框架方程
-$(-\nabla^2 + \sigma)u = f$。
-除特别说明外，默认实验采用 modified Helmholtz 参数 $\sigma = +k^2$（$k^2 > 0$）。
-本文理论框架可推广到可分离矩形区域 $[0,L_x]\times[0,L_y]$；
-为简化实现与实验展示，数值实验均在单位正方形 $[0,1]^2$ 和等距网格 $h_x=h_y$ 下进行。
-非正方形区域只需将频域分母改写为 $\mu_p/h_x^2 + \mu_q/h_y^2 + \sigma$，
-但本文未系统测试该情形。
-
-\paragraph{实验分类与 Fourier 模态局限性}
-本章实验分为两类。
-第一类用于验证离散求解器是否正确求解给定差分系统，
-包括 FFT 解与 sparse direct 解的一致性、二阶/四阶收敛阶以及边界条件处理；
-第二类用于观察不同方程参数下的谱性质和 Krylov 迭代行为。
-需要指出的是，部分三角函数 manufactured solution 属于离散 Laplacian 的 Fourier 模态，
-适合验证频域对角化公式和理论阶数，但不完全代表一般右端项下的迭代行为。
-因此，涉及 GMRES 迭代次数的实验优先采用多项式或 Gaussian 型非特征右端项。
-单模态和多模态三角函数测试主要用于验证 DST/DCT 频域求解公式、边界处理以及理论收敛阶。
-由于这些函数属于 Laplacian 的 Fourier 特征基，其误差结构较为理想，
-不能完全代表一般光滑函数下的离散误差行为。
-为降低这一特殊性，本文补充使用非特征多项式 manufactured solution
-$u(x,y)=x^2(1-x)^2y^2(1-y)^2$ 进行验证。
-因此，本文关于二阶和四阶精度的判断由 Fourier/Taylor 截断误差分析、
-模态测试和非特征函数测试共同支撑。
-
-\paragraph{GMRES 容差说明}
-本文自实现 GMRES 的停止准则采用绝对残差范数 $\|r_m\|_2 < \varepsilon$。
-因此不同右端项幅值下的迭代次数仅作同类问题内部比较。
-若需跨问题严格比较，应统一使用相对残差 $\|r_m\|_2/\|b\|_2 < \varepsilon$。
-
-\subsection{测试问题}
-
-\subsubsection{Dirichlet 边界条件}
-
-取精确解 $u(x,y) = \sin(\pi x)\sin(\pi y)$，
-对应的右端项为
+本章在单位正方形 $\Omega=[0,1]^2$ 上验证前文算法。
+所有实验均采用统一方程
 \begin{equation}
-  f(x,y) = (2\pi^2 + k^2)\sin(\pi x)\sin(\pi y),
+  (-\nabla^2+\sigma)u=f,
 \end{equation}
-边界值为零，满足齐次 Dirichlet 边界条件。
+其中 $\sigma=0$ 对应 Poisson 方程，$\sigma=+\kappa^2$ 对应 modified Helmholtz 方程，
+$\sigma=-\kappa^2$ 对应 true Helmholtz 方程。
+为保证实验结论与数据来源形成闭环，本章只保留由当前实验脚本和 CSV 文件支撑的核心实验：
+离散系统一致性、收敛阶、边界条件处理、modified/true Helmholtz 谱指标对比，
+以及 true Helmholtz 近共振扫描。
 
-\subsubsection{Neumann 边界条件}
+\subsection{实验设置与可复现性说明}
 
-取精确解 $u(x,y) = \cos(\pi x)\cos(\pi y)$，
-对应的右端项为
-\begin{equation}
-  f(x,y) = (2\pi^2 + k^2)\cos(\pi x)\cos(\pi y),
-\end{equation}
-边界法向导数为零，满足齐次 Neumann 边界条件。
+实验文件位置如下：
+\begin{itemize}[itemsep=1pt]
+  \item 脚本：\path{code/python/experiments/}；
+  \item CSV 结果：\path{code/python/experiments/results/}；
+  \item 论文图像：\path{thesis/figures/}。
+\end{itemize}
+默认网格为等距网格，记总网格点数为 $n$，内点数为 $N=n-2$。
+涉及 GMRES 的实验均使用本文自实现的重启 GMRES，
+停止准则为绝对残差 $\|r_m\|_2<\varepsilon$；
+因此不同右端项幅值下的迭代次数只作同类问题内部比较。
 
-\subsection{实验一：收敛阶验证}
+需要特别说明的是，三角函数 manufactured solution 常常是离散 Laplacian 的 Fourier 模态，
+适合验证 DST/DCT 对角化公式和理论收敛阶，但不能代表一般右端项下的 Krylov 迭代行为。
+因此，本章在收敛阶验证中补充非特征多项式解，
+在 modified/true Helmholtz 的 GMRES 对比中使用 Gaussian 型非特征右端项。
 
-本实验验证各求解器的理论收敛阶。取 $k^2 = 10$，
-网格大小 $n = 9, 17, 33, 65, 129$，
-使用 Dirichlet 边界条件的测试问题。
+本文实现并验证的 FFT9 四阶紧致格式仅针对 Dirichlet 边界条件。
+Neumann 或混合边界条件下的九点紧致模板需要重新构造边界行及其变换对角化结构，
+不属于本文实现范围。
+FACR-like 实现采用完整方向 DST 结合有限步奇偶约化，
+实际复杂度仍为 $O(N^2\log N)$；经典 FACR 的 $O(N^2\log\log N)$ 作为理论背景和后续改进方向。
 
-\subsubsection{二阶格式（五点差分）}
+\subsection{实验一：FFT 解与 sparse direct 解的一致性}
 
-FA、CR、FACR 三种求解器均基于五点差分格式，理论收敛阶为 $O(h^2)$。
-表~\ref{tab:conv_2nd} 列出了各求解器在不同网格下的最大误差和收敛阶。
-
-\begin{table}[htbp]
-\centering
-\caption{二阶格式收敛率验证（$k^2 = 10$，Dirichlet BC）}
-\label{tab:conv_2nd}
-\begin{tabular}{ccccccc}
-\toprule
- & \multicolumn{2}{c}{FA} & \multicolumn{2}{c}{CR} & \multicolumn{2}{c}{FACR} \\
-\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}
-$n$ & 误差 & 阶 & 误差 & 阶 & 误差 & 阶 \\
-\midrule
-9  & 8.56e-3 & --   & 8.56e-3 & --   & 8.56e-3 & --   \\
-17 & 2.13e-3 & 2.00 & 2.13e-3 & 2.00 & 2.13e-3 & 2.00 \\
-33 & 5.33e-4 & 2.00 & 5.33e-4 & 2.00 & 5.33e-4 & 2.00 \\
-65 & 1.33e-4 & 2.00 & 1.33e-4 & 2.00 & 1.33e-4 & 2.00 \\
-129& 3.33e-5 & 2.00 & 3.33e-5 & 2.00 & 3.33e-5 & 2.00 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-实验结果表明，FA、CR、FACR 三种方法在相同网格下产生完全一致的数值解，
-收敛阶均精确为 $2.00$，与二阶差分格式的理论预期完全吻合。
-需要指出的是，本节采用的单模态三角函数精确解是离散 Laplacian 的特征函数，
-因此该实验能够清晰验证 DST/DCT 频域除法、边界条件处理以及理论收敛阶，
-但不能完全代表一般右端项下的迭代行为。
-为降低单模态带来的特殊性，后续实验进一步采用多模态组合、非齐次边界问题和多项式测试问题进行补充。
-本文关于二阶和四阶精度的判断主要依据 Taylor/Fourier 截断误差分析以及这些补充实验共同支撑。
-
-\subsubsection{四阶格式（FFT9 紧致差分）}
-
-FFT9 求解器基于九点紧致差分格式，理论收敛阶为 $O(h^4)$。
-表~\ref{tab:conv_4th} 列出了 FFT9 在不同网格下的误差和收敛阶。
+本实验对应脚本 \texttt{exp00\_fft\_vs\_sparse.py}。
+目标不是检验截断误差，而是确认 FFT 类求解器确实求解了同一个离散线性系统。
+五点格式下，FA、CR、FACR 的结果与 \texttt{spsolve} 的差异应达到舍入误差量级。
+表~\ref{tab:exp00_sparse_consistency} 列出 $n=65$ 时的代表结果。
 
 \begin{table}[htbp]
 \centering
-\caption{四阶格式收敛率验证（$k^2 = 10$，Dirichlet BC）}
-\label{tab:conv_4th}
-\begin{tabular}{ccc}
-\toprule
-$n$ & 误差 & 收敛阶 \\
-\midrule
-9  & 4.34e-5 & --   \\
-17 & 2.73e-6 & 3.99 \\
-33 & 1.71e-7 & 4.00 \\
-65 & 1.07e-8 & 4.00 \\
-129& 6.69e-10 & 4.00 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-FFT9 的收敛阶精确为 $4.00$，与四阶紧致差分格式的理论预期一致。
-在 $n = 65$ 的测试网格上，FFT9 的最大误差约为 $1.07 \times 10^{-8}$，
-五点格式约为 $1.33 \times 10^{-4}$，绝对误差降低约四个数量级，
-这与四阶格式相比二阶格式在 $h=1/64$ 下的理论预期一致。
-
-图~\ref{fig:convergence_rates} 展示了各求解器的误差随网格间距的变化趋势，
-可以清晰地看到二阶方法和四阶方法的不同斜率。
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.75\textwidth]{figures/convergence_rates.png}
-\caption{各求解器收敛阶验证（$k^2 = 10$，Dirichlet BC）}
-\label{fig:convergence_rates}
-\end{figure}
-
-\subsection{实验二：直接求解器精度对比}
-
-表~\ref{tab:accuracy} 对比了四种直接求解器在不同网格下的精度。
-取 $k^2 = 10$，Dirichlet 边界条件。
-
-\begin{table}[htbp]
-\centering
-\caption{直接求解器精度对比（$k^2 = 10$，Dirichlet BC）}
-\label{tab:accuracy}
+\caption{FFT 求解器与 sparse direct 解的一致性（$n=65$）}
+\label{tab:exp00_sparse_consistency}
 \begin{tabular}{ccccc}
 \toprule
-$n$ & FA & CR & FACR & FFT9 \\
+边界条件 & $\sigma$ & 方程类型 & 方法 & $\|u_{\mathrm{FFT}}-u_{\mathrm{sp}}\|_\infty$ \\
 \midrule
-9  & 8.56e-3 & 8.56e-3 & 8.56e-3 & 4.34e-5 \\
-17 & 2.13e-3 & 2.13e-3 & 2.13e-3 & 2.73e-6 \\
-33 & 5.33e-4 & 5.33e-4 & 5.33e-4 & 1.71e-7 \\
-65 & 1.33e-4 & 1.33e-4 & 1.33e-4 & 1.07e-8 \\
-129& 3.33e-5 & 3.33e-5 & 3.33e-5 & 6.69e-10 \\
+Dirichlet & $0$  & Poisson    & FA / CR / FACR & $\le 1.91\times10^{-14}$ \\
+Dirichlet & $10$ & Modified H. & FA / CR / FACR & $\le 1.19\times10^{-14}$ \\
+Dirichlet & $-5$ & True H.     & FA / CR / FACR & $\le 2.39\times10^{-14}$ \\
+Neumann   & $10$ & Modified H. & FA / CR        & $\le 1.25\times10^{-14}$ \\
+Mixed $(N,D)$ & $10$ & Modified H. & FA          & $1.09\times10^{-14}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-FA、CR、FACR 三种方法基于相同的五点差分格式，
-因此产生完全一致的数值解（误差差异在机器精度范围内）。
-FFT9 基于九点紧致差分格式，精度远高于其余三种方法。
-值得注意的是，FFT9 在 $n = 129$ 时的误差已达到 $6.69 \times 10^{-10}$，
-接近机器精度，而五点差分方法仅能达到 $3.33 \times 10^{-5}$。
-
-\subsection{实验三：GMRES 收敛行为分析}
-
-本实验分析 GMRES 迭代法在不同参数下的收敛行为。
-采用多项式测试问题 $u = x^2(1-x)^2 y^2(1-y)^2$，
-该问题不对应离散 Laplacian 的单一特征模态，
-因此能够真实反映 GMRES 的迭代收敛行为~\cite{Niu2009}。
-
-\subsubsection{不同波数下的收敛性}
-
-固定网格 $n = 33$，取 $\kappa^2 = 0, 1, 10, 100, 1000$（modified Helmholtz，$\sigma=+\kappa^2$），
-观察 GMRES(30) 的收敛曲线，结果如图~\ref{fig:gmres_convergence} 左图所示。
-
-随着波数参数 $\kappa^2$ 的增大，GMRES 的收敛速度呈现以下规律：
-\begin{itemize}
-  \item $\kappa^2 = 0$（Poisson 方程）和较小的 $\kappa^2$：收敛最慢，需要最多的迭代次数；
-  \item $\kappa^2 = 100, 1000$：收敛明显加快，迭代次数显著减少。
-\end{itemize}
-
-这是因为 modified Helmholtz 方程中，较大的 $\kappa^2$ 使得矩阵 $A = -\nabla^2 + \kappa^2 I$ 更加对角占优，
-条件数改善（$\kappa(A) = (\lambda_{\max} + \kappa^2)/(\lambda_{\min} + \kappa^2) \to 1$），
-Krylov 子空间方法更容易逼近解。
-这是 modified Helmholtz 方程的特有行为，不应推广到 true Helmholtz 方程。
-
-\subsubsection{不同网格下的收敛性}
-
-固定 $k^2 = 10$，取 $n = 17, 33, 65, 129$，
-结果如图~\ref{fig:gmres_convergence} 右图所示。
-
-随着网格加密，GMRES 所需迭代次数显著增加，
-这是因为五点差分矩阵的条件数随 $h^{-2}$ 增长，
-Krylov 子空间方法在高维空间中需要更多迭代来收敛。
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{figures/gmres_convergence.png}
-\caption{GMRES 收敛行为分析：左图为不同波数（$n=33$），右图为不同网格（$k^2=10$）}
-\label{fig:gmres_convergence}
-\end{figure}
-
-\subsubsection{GMRES 收敛阶验证}
-
-表~\ref{tab:gmres_conv} 验证了 GMRES 求解 Helmholtz 方程的收敛阶。
-取 $k^2 = 10$，Dirichlet 边界条件，容差 $\varepsilon = 10^{-12}$（绝对残差范数），
-采用多项式测试问题 $u = x^2(1-x)^2 y^2(1-y)^2$。
-
-\begin{table}[htbp]
-\centering
-\caption{GMRES 收敛阶验证（$k^2 = 10$，Dirichlet BC，多项式测试问题）}
-\label{tab:gmres_conv}
-\begin{tabular}{cccc}
-\toprule
-$n$ & 误差 & 收敛阶 & 迭代次数 \\
-\midrule
-9  & 1.43e-4  & --   & 9      \\
-17 & 3.57e-5  & 2.00 & 31     \\
-33 & 8.92e-6  & 2.00 & 150    \\
-65 & 2.23e-6  & 2.00 & 732    \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-GMRES 的收敛阶为 $2.00$，与五点差分格式的理论精度一致。
-与直接法不同，GMRES 的迭代次数随问题规模显著增加：
-从 $n=9$ 时的 9 次迭代增长到 $n=65$ 时的 732 次迭代，
-反映了无预处理 GMRES 在大规模 Helmholtz 问题上的固有局限性。
-
-\subsection{实验四：直接法与迭代法效率对比}
-
-本实验对比 FFT 直接法与 GMRES 迭代法的计算时间和精度。
-取 $k^2 = 10$，Dirichlet 边界条件，网格 $n = 33, 65, 129, 257$。
-直接法使用特征函数测试问题 $u = \sin(\pi x)\sin(\pi y)$，
-GMRES 使用多项式测试问题 $u = x^2(1-x)^2 y^2(1-y)^2$
-以获得真实的迭代行为。
-
-表~\ref{tab:efficiency_time} 列出了各求解器的计算时间，
-表~\ref{tab:efficiency_accuracy} 列出了对应的精度。
-
-\begin{table}[htbp]
-\centering
-\caption{计算时间对比（ms，$k^2 = 10$，Dirichlet BC）}
-\label{tab:efficiency_time}
-\begin{tabular}{cccccc}
-\toprule
-$n$ & FA & CR & FACR & FFT9 & GMRES(30) \\
-\midrule
-33  & 3.2  & 3.9  & 2.7  & 5.5  & 39.7    \\
-65  & 4.6  & 13.3 & 7.0  & 17.7 & 343.5   \\
-129 & 10.7 & 43.7 & 16.7 & 46.1 & 23361.4 \\
-257 & 40.2 & 233.4& 67.7 & 175.4& 91709.1 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{table}[htbp]
-\centering
-\caption{精度对比（最大误差，$k^2 = 10$，Dirichlet BC）}
-\label{tab:efficiency_accuracy}
-\begin{tabular}{cccccc}
-\toprule
-$n$ & FA & CR & FACR & FFT9 & GMRES(30) \\
-\midrule
-33  & 5.33e-4 & 5.33e-4 & 5.33e-4 & 1.71e-7 & 8.92e-6 \\
-65  & 1.33e-4 & 1.33e-4 & 1.33e-4 & 1.07e-8 & 2.23e-6 \\
-129 & 3.33e-5 & 3.33e-5 & 3.33e-5 & 6.69e-10 & 5.57e-7 \\
-257 & 8.33e-6 & 8.33e-6 & 8.33e-6 & 4.18e-11 & 1.39e-7 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-从表中可以得出以下结论：
-
-\begin{enumerate}
-  \item \textbf{计算时间}：FFT 直接法的计算时间远小于 GMRES 迭代法。
-        本文计时实验采用单次运行结果，主要用于展示不同算法随网格规模变化的趋势，
-        而非严格性能基准。Python 环境下计时受缓存、系统负载和解释器开销影响，
-        绝对时间仅供参考。
-        在 $n = 129$ 时，FA 仅需约 11ms，而 GMRES(30) 需要约 23 秒，
-        差距超过 2000 倍。
-        在 $n = 257$ 时，GMRES(30) 更是需要超过 91 秒，
-        而 FACR 仅需约 68ms。
-        这是因为 GMRES 的迭代次数随问题规模急剧增长
-        （$n=33$: 150次, $n=65$: 732次, $n=129$: 约4000次），
-        而每次迭代需要进行矩阵-向量乘积 $O(N^2)$。
-
-  \item \textbf{精度}：FA、CR、FACR 基于五点差分格式，精度一致；
-        FFT9 基于四阶紧致差分格式，精度远高于其他方法；
-        GMRES 也基于五点差分格式，收敛阶为 $O(h^2)$，与直接法一致。
-
-  \item \textbf{规模增长}：GMRES 的计算时间增长速度远快于 FFT 直接法。
-        从 $n=33$ 到 $n=257$，FA 的时间增长约 12 倍（符合 $O(N^2 \log N)$），
-        而 GMRES 的时间增长约 2300 倍，体现了迭代法在大规模问题上的固有劣势。
-        FACR 在中等规模问题上表现最优，体现了其混合策略的效率优势。
-        本文实现的 FACR-like 方法采用完整方向 DST 结合有限步奇偶约化，
-        实际复杂度仍为 $O(N^2 \log N)$。
-        实验中不同 $l$ 值带来的性能差异主要反映常数因子变化和缩减系统规模变化，
-        而不是经典 FACR 的 $O(N^2 \log\log N)$ 最优复杂度。
-\end{enumerate}
-
-图~\ref{fig:efficiency} 直观展示了直接法与迭代法在时间和精度上的对比。
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{figures/efficiency_comparison.png}
-\caption{直接法与迭代法效率对比：左图为计算时间，右图为精度}
-\label{fig:efficiency}
-\end{figure}
-
-\subsection{实验五：不同波数的影响}
-
-本实验考察不同波数 $k$ 对求解效果的影响。
-取 $n = 33, 65, 129$，$k^2 = 0, 1, 10, 100, 1000$，
-使用 Dirichlet 边界条件。
-
-\subsubsection{FA 直接求解器}
-
-表~\ref{tab:wavenumber_fa} 列出了 FA 直接求解器在不同波数下的精度。
-
-\begin{table}[htbp]
-\centering
-\caption{FA 直接求解器在不同波数下的精度（Dirichlet BC）}
-\label{tab:wavenumber_fa}
-\begin{tabular}{cccc}
-\toprule
-$k^2$ & $n = 33$ & $n = 65$ & $n = 129$ \\
-\midrule
-0    & 8.04e-4 & 2.01e-4 & 5.02e-5 \\
-1    & 7.65e-4 & 1.91e-4 & 4.78e-5 \\
-10   & 5.33e-4 & 1.33e-4 & 3.33e-5 \\
-100  & 1.32e-4 & 3.31e-5 & 8.28e-6 \\
-1000 & 1.55e-5 & 3.89e-6 & 9.72e-7 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-对于所有测试的波数值，FA 直接求解器均保持了二阶收敛精度，
-且精度随着波数增大反而略有提高。
-这是因为当 $k^2$ 较大时（modified Helmholtz，$\sigma=+\kappa^2$），
-频域分母 $\lambda_{p,q} + \kappa^2$ 远离零点，条件数反而改善，
-不会出现共振问题（共振仅在 true Helmholtz，$\sigma=-\kappa^2$ 时出现）。
-这体现了 FFT 直接法在 modified Helmholtz 方程下的一个重要优势：
-频域分母恒正，求解精度与波数无关。
-
-\subsubsection{GMRES 迭代次数}
-
-表~\ref{tab:wavenumber_gmres} 列出了 GMRES(30) 在不同波数下所需的迭代次数。
-测试采用多项式问题 $u = x^2(1-x)^2 y^2(1-y)^2$，
-该问题激发离散系统的多个特征模态，能够真实反映 GMRES 的迭代行为。
-
-\begin{table}[htbp]
-\centering
-\caption{GMRES(30) 在不同波数下的迭代次数（Dirichlet BC，多项式测试问题，容差 $10^{-10}$）}
-\label{tab:wavenumber_gmres}
-\begin{tabular}{cccc}
-\toprule
-$k^2$ & $n = 33$ & $n = 65$ & $n = 129$ \\
-\midrule
-0    & 149  & 784  & 2875  \\
-1    & 147  & 772  & 2752  \\
-10   & 130  & 613  & 1992  \\
-100  & 77   & 206  & 620   \\
-1000 & 31   & 70   & 158   \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-与直接法不同，GMRES 的迭代次数随波数参数呈现有趣的规律：
-对 modified Helmholtz 方程 $\sigma=+\kappa^2$，
-$\kappa^2$ 增大使频域分母远离零并改善条件数，因此无预处理 GMRES 迭代次数减少。
-当 $\kappa^2$ 较小时，modified Helmholtz 矩阵 $A = -\nabla_h^2 + \kappa^2 I$ 的条件数较大，
-GMRES 需要较多迭代；当 $\kappa^2$ 增大时，对角占优程度增强，条件数改善，迭代次数反而减少。
-该结论不适用于 true Helmholtz 方程 $\sigma=-\kappa^2$。
-具体而言，$\kappa^2 = 0$（Poisson 方程）时条件数最大，$n=129$ 需要 2875 次迭代；
-而 $\kappa^2 = 1000$ 时仅需 158 次迭代，减少了约 18 倍。
-
-这体现了 modified Helmholtz 方程的特殊性质：
-条件数随 $\kappa^2$ 改善，迭代法收敛加速。
-对于 true Helmholtz 方程（$\sigma=-\kappa^2$），行为截然相反——
-近共振时频域分母趋近零，可能导致迭代困难（见第\ref{sec:helmholtz}章频域分析）。
-当前实验中 $\sigma=-1,-5,-10$ 均远离离散 Laplacian 特征值，迭代行为稳定；
-近共振区域的系统扫描见实验十六。
-此外，高频解的离散化精度仍需要更密的网格
-（每个波长需足够采样点），否则会出现数值频散（pollution effect）。
-
-图~\ref{fig:wavenumber} 展示了不同波数下 GMRES 的收敛曲线对比。
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.75\textwidth]{figures/wavenumber_effects.png}
-\caption{不同波数下 GMRES 收敛行为（$n = 65$，Dirichlet BC）}
-\label{fig:wavenumber}
-\end{figure}
-
-\subsection{实验六：Neumann 边界条件}
-
-本实验验证 Neumann 边界条件下的求解效果。
-取 $k^2 = 1$，使用 ghost-point 对称化 DCT-I 方法。
-
-\subsubsection{FFT 直接法}
-
-表~\ref{tab:neumann_fft} 列出了 FA、CR、FACR 在 Neumann 边界条件下的收敛结果。
-
-\begin{table}[htbp]
-\centering
-\caption{FFT 直接法 Neumann 边界条件收敛率（$k^2 = 1$）}
-\label{tab:neumann_fft}
-\begin{tabular}{ccccccc}
-\toprule
- & \multicolumn{2}{c}{FA} & \multicolumn{2}{c}{CR} & \multicolumn{2}{c}{FACR} \\
-\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}
-$n$ & 误差 & 阶 & 误差 & 阶 & 误差 & 阶 \\
-\midrule
-9  & 1.23e-2 & --   & 1.23e-2 & --   & 1.23e-2 & --   \\
-17 & 3.06e-3 & 2.01 & 3.06e-3 & 2.01 & 3.06e-3 & 2.01 \\
-33 & 7.65e-4 & 2.00 & 7.65e-4 & 2.00 & 7.65e-4 & 2.00 \\
-65 & 1.91e-4 & 2.00 & 1.91e-4 & 2.00 & 1.91e-4 & 2.00 \\
-129& 4.78e-5 & 2.00 & 4.78e-5 & 2.00 & 4.78e-5 & 2.00 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-三种方法在 Neumann 边界条件下的收敛阶均精确为 $2.00$，
-与理论预期一致。Ghost-point 对称化 DCT-I 方法有效地将 Neumann 边界条件
-纳入了 FFT 框架，无需额外的边界处理步骤。
-
-图~\ref{fig:neumann} 展示了 Neumann 边界条件下各求解器的收敛行为。
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.75\textwidth]{figures/neumann_convergence.png}
-\caption{Neumann 边界条件收敛率（$k^2 = 1$）}
-\label{fig:neumann}
-\end{figure}
-
-\subsubsection{GMRES 迭代法}
-
-表~\ref{tab:neumann_gmres} 列出了 GMRES 在 Neumann 边界条件下的收敛结果。
-测试采用多项式测试问题 $u = x^2(1-x)^2 y^2(1-y)^2$，
-该问题在边界上满足齐次 Neumann 条件。
-
-\begin{table}[htbp]
-\centering
-\caption{GMRES Neumann 边界条件（$k^2 = 1$，多项式测试问题，容差 $10^{-10}$）}
-\label{tab:neumann_gmres}
-\begin{tabular}{cccc}
-\toprule
-$n$ & 误差 & 收敛阶 & 迭代次数 \\
-\midrule
-9  & 2.29e-3 & --   & 13  \\
-17 & 5.75e-4 & 1.99 & 61  \\
-33 & 1.44e-4 & 2.00 & 711 \\
-65 & 3.60e-5 & 2.00 & 8067 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-GMRES 在 Neumann 边界条件下的收敛阶为 $2.00$，
-与五点差分格式的理论精度一致。
-然而，Neumann 问题下 GMRES 的迭代次数增长极为迅速：
-从 $n=33$ 的 711 次激增到 $n=65$ 的 8067 次，
-远超 Dirichlet 条件下的 732 次。
-这是因为 Neumann 离散矩阵具有零特征值（对应常数模式），
-条件数比 Dirichlet 情况更差，导致 GMRES 收敛缓慢。
-
-\subsection{实验结果总结}
-
-通过上述六个实验，可以得出以下主要结论：
-
-\begin{enumerate}
-  \item \textbf{收敛阶验证}：五点差分格式的收敛阶为 $O(h^2)$，
-        九点紧致差分格式的收敛阶为 $O(h^4)$，均与理论预期完全吻合。
-
-  \item \textbf{方法等价性}：FA、CR、FACR 三种 FFT 直接法在相同差分格式下
-        产生完全一致的数值解，区别仅在计算效率上。
-        FACR 在中等规模问题上效率最优。
-
-  \item \textbf{FFT 直接法效率优势}：在规则矩形区域上，
-        FFT 直接法的时间复杂度远优于 GMRES 迭代法，
-        且不存在收敛性问题。
-        FA 和 FACR 在大规模问题上的优势尤为明显。
-
-  \item \textbf{GMRES 的规模敏感性}：GMRES 迭代次数随问题规模增大而急剧增加，
-        在多项式测试问题下，$n=33$ 时需 150 次迭代，$n=65$ 时需 732 次，$n=129$ 时需约 4000 次。
-        重启策略 GMRES(30) 在大规模问题上的计算时间远超 FFT 直接法
-        （$n=257$: GMRES 约 92 秒 vs FA 约 40 毫秒，差距超过 2000 倍）。
-
-  \item \textbf{波数影响}：FFT 直接法不受波数影响（只要不触及共振），
-        甚至在大波数下条件数改善而精度略有提高；
-        GMRES 的收敛速度在大波数下反而加快，
-        因为 $k^2$ 增大使矩阵更对角占优
-        （$k^2=0$: 2875次迭代 vs $k^2=1000$: 158次迭代，$n=129$）。
-
-  \item \textbf{Neumann 边界条件}：Ghost-point 对称化 DCT-I 方法
-        成功将 Neumann 边界条件纳入 FFT 直接法框架，
-        保持了二阶收敛精度，与 Dirichlet 边界条件的处理同样优雅高效。
-\end{enumerate}
-
-\subsection{实验七：误差分布可视化}
-
-本实验通过误差热力图和三维曲面图直观展示各求解器的误差分布特征。
-
-\subsubsection{解与误差热力图}
-
-图~\ref{fig:error_heatmaps} 展示了 $n = 65$、$k^2 = 10$ 时
-精确解、FA 数值解以及两种方法的逐点误差分布。
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{figures/error_heatmaps.png}
-\caption{解与误差热力图（$n=65$，$k^2=10$，Dirichlet BC）：左上为精确解，右上为 FA 解，左下为 FA 对数误差，右下为 FFT9 对数误差}
-\label{fig:error_heatmaps}
-\end{figure}
-
-从热力图中可以观察到：
-\begin{itemize}[itemsep=2pt]
-  \item FA 的误差在区域中心最大，向边界递减，
-        这是因为五点差分格式在边界处有 Dirichlet 条件约束；
-  \item FFT9 的误差比 FA 小约四个数量级，且分布模式更加均匀；
-  \item 两种方法的误差均呈现"钟形"分布，
-        与差分格式截断误差的 Fourier 分析结论一致。
-\end{itemize}
-
-\subsubsection{网格加密下的误差演化}
-
-图~\ref{fig:error_grid_refinement} 展示了不同网格尺度下 FA 的误差分布变化，
-可以清晰看到随网格加密误差的均匀减小。
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{figures/error_grid_refinement.png}
-\caption{不同网格尺度下 FA 误差分布（$k^2=10$，Dirichlet BC）}
-\label{fig:error_grid_refinement}
-\end{figure}
-
-\subsubsection{三维解曲面}
-
-图~\ref{fig:solution_surface} 以三维曲面形式展示了精确解、FA 数值解和放大后的误差分布。
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{figures/solution_surface.png}
-\caption{三维解曲面与误差分布（$n=65$，$k^2=10$，Dirichlet BC）}
-\label{fig:solution_surface}
-\end{figure}
-
-\subsection{实验八：条件数分析}
-
-矩阵条件数是影响迭代法收敛速度的关键因素。
-由推论~\ref{cor:condition_number}，五点差分矩阵的条件数为 $O(h^{-2})$。
-
-图~\ref{fig:condition_number} 展示了不同波数下条件数随网格间距的变化。
-可以观察到：
-\begin{itemize}[itemsep=2pt]
-  \item 当 $k^2 = 0$（Poisson 方程）时，条件数严格遵循 $O(h^{-2})$ 增长；
-  \item 当 $k^2 > 0$ 时，条件数仍以 $O(h^{-2})$ 增长，但常数因子更小；
-  \item 当 $k^2$ 较大时，$\lambda_{\min} \approx k^2 > 0$（modified Helmholtz，$\sigma=+\kappa^2$），
-        条件数在粗网格上反而较小，这与实验五中 FA 精度随 $k^2$ 增大而提高的现象一致。
-\end{itemize}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.75\textwidth]{figures/condition_number.png}
-\caption{条件数随网格间距的变化（Dirichlet BC）}
-\label{fig:condition_number}
-\end{figure}
-
-\subsection{实验九：FACR(l) 参数研究}
-
-FACR(l) 算法的性能依赖于循环约化步数 $l$ 的选择。
-由定理~\ref{thm:facr_complexity}，最优 $l \approx \log_2(\log_2 N)$。
-
-图~\ref{fig:facr_parameter} 和下表展示了不同 $l$ 值下 FACR 的计算时间。
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.75\textwidth]{figures/facr_parameter.png}
-\caption{FACR(l) 性能随 CR 步数 $l$ 的变化（$k^2=10$，Dirichlet BC）}
-\label{fig:facr_parameter}
-\end{figure}
-
-实验结果表明：
-\begin{itemize}[itemsep=2pt]
-  \item 对小网格（$n \leq 65$），$l = 0$（即纯 FA）已是最优选择，
-        CR 步骤引入的开销大于收益；
-  \item 对中等网格（$n = 129 \sim 257$），$l = 1 \sim 2$ 开始显现优势；
-  \item 对大网格（$n \geq 513$），$l = 2 \sim 3$ 可带来约 2 倍的加速，
-        与理论预测 $l_{\mathrm{opt}} \approx \log_2(\log_2 N)$ 一致。
-\end{itemize}
-
-\subsection{实验十：GMRES 重启参数敏感性}
-
-重启参数 $m$ 是 GMRES(m) 算法的关键超参数。
-图~\ref{fig:gmres_restart} 分析了不同 $m$ 值对收敛速度的影响。
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{figures/gmres_restart.png}
-\caption{GMRES(m) 重启参数敏感性分析：左图为收敛曲线，右图为总迭代次数 vs $m$}
-\label{fig:gmres_restart}
-\end{figure}
-
-从图中可以观察到：
-\begin{itemize}[itemsep=2pt]
-  \item $m$ 越大，收敛曲线越平滑，重启造成的残差"跳跃"越小；
-  \item 总迭代次数随 $m$ 增大而减少，但减少幅度逐渐变小（边际效应递减）；
-  \item 对于 $n = 129$，$m = 100$ 相比 $m = 10$ 可减少约 50\% 的迭代次数，
-        但每次迭代的正交化开销也增大了 10 倍，实际加速效果有限。
-\end{itemize}
-
-\subsection{实验十一：复杂度标度验证}
-
-本实验通过实测计算时间验证各方法的理论复杂度。
-图~\ref{fig:complexity_scaling} 展示了 FA、CR、FACR 三种方法的计算时间随问题规模的变化。
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.75\textwidth]{figures/complexity_scaling.png}
-\caption{复杂度标度验证：计算时间 vs 问题规模（$k^2=10$）}
-\label{fig:complexity_scaling}
-\end{figure}
-
-实测曲线与 $O(N^2 \log N)$ 理论参考线吻合良好，
-验证了 FA、CR 方法的理论复杂度。
-FACR 在大规模问题上的优势也可以观察到。
-
-\subsection{实验十二：复杂测试问题}
-
-前面的实验均使用单模态精确解 $u = \sin(\pi x)\sin(\pi y)$。
-本实验使用含多个频率分量的复杂精确解：
+这些结果表明，五点格式的 DST/DCT 求解器与对应稀疏矩阵直接解在机器精度范围内一致。
+FFT9 属于九点紧致离散系统，其一致性由紧致稀疏系统对比测试单独验证，
+不与五点 sparse system 混作同一离散误差表。
+因此，实验一证明的是离散系统求解一致性，不证明连续 PDE 误差收敛阶。
+
+\subsection{实验二：二阶与四阶收敛阶验证}
+
+本实验对应脚本 \texttt{exp01\_convergence.py}。
+实验同时包含 Fourier 模态轨道和非特征多项式轨道。
+Fourier 模态轨道用于验证频域公式；
+多项式轨道采用
 \begin{equation}
-  u(x,y) = \sin(\pi x)\sin(\pi y) + 0.5\sin(2\pi x)\sin(3\pi y) + 0.3\sin(5\pi x)\sin(4\pi y)
+  u(x,y)=x^2(1-x)^2y^2(1-y)^2,
 \end{equation}
-
-多模态测试问题的意义在于：
-\begin{itemize}[itemsep=2pt]
-  \item 验证求解器对高频分量的分辨能力；
-  \item 更接近实际问题中右端项的一般性；
-  \item 高频分量的离散化误差更大，可以更充分地暴露方法特性。
-\end{itemize}
-
-实验结果（图~\ref{fig:complex_test_heatmap}）表明，
-FA 和 FFT9 的收敛阶在多模态问题下仍分别保持 $O(h^2)$ 和 $O(h^4)$，
-但绝对误差比单模态问题大约一个数量级，
-这是因为高频分量 $(5\pi, 4\pi)$ 的离散化需要更细的网格才能精确分辨。
+用于降低单一特征模态带来的特殊性。
+图~\ref{fig:exp01_convergence} 给出整体收敛曲线，
+表~\ref{tab:exp01_poly_convergence} 列出 modified Helmholtz 参数 $\sigma=10$ 下多项式轨道的代表数据。
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{figures/complex_test_heatmap.png}
-\caption{复杂测试问题：精确解与误差热力图（$n=65$，$k^2=10$，Dirichlet BC）}
-\label{fig:complex_test_heatmap}
+\includegraphics[width=0.82\textwidth]{figures/exp01_convergence.png}
+\caption{二阶五点格式与四阶 FFT9 格式的收敛阶验证}
+\label{fig:exp01_convergence}
 \end{figure}
-
-\subsection{实验十三：波数-网格精度热力图}
-
-图~\ref{fig:wavenumber_heatmap} 以热力图形式全面展示了
-FA 求解器的精度随波数 $k^2$ 和网格大小 $n$ 的变化关系。
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.75\textwidth]{figures/wavenumber_heatmap.png}
-\caption{FA 求解器精度随波数和网格大小的变化（$\log_{10}$ 最大误差，Dirichlet BC）}
-\label{fig:wavenumber_heatmap}
-\end{figure}
-
-热力图清晰地揭示了以下规律：
-\begin{itemize}[itemsep=2pt]
-  \item \textbf{纵向}（固定 $k^2$，加密网格）：误差以 $O(h^2)$ 速率下降，
-        与理论预期一致；
-  \item \textbf{横向}（固定网格，增大 $k^2$）：误差先减小后趋于稳定，
-        这是因为 $k^2$ 增大改善了条件数，但离散化精度不变；
-  \item \textbf{对角线}：保持 $kh$ 恒定时，误差基本一致，
-        证实了"每个波长需足够采样点"的经验法则。
-\end{itemize}
-
-% ===== 实验十四 =====
-\subsection{实验十四：非齐次 Dirichlet 边界条件验证}\label{sec:exp14_nonhom_bc}
-
-本实验验证非齐次 Dirichlet 边界条件下各求解器的正确性，
-重点验证 A1 bug（$\sigma \neq 0$ 时 $F \pm=bc/h^2$ 符号）修复后的正确性。
-取精确解 $u(x,y) = \sin(2\pi x)\sin(3\pi y) + 1$（边界值 $g_D = 1$，非零），
-对应的右端项为
-\begin{equation}
-  f(x,y) = \bigl((2\pi)^2 + (3\pi)^2 + \sigma\bigr)\sin(2\pi x)\sin(3\pi y) + \sigma
-\end{equation}
-其中常数 $1$ 的 Laplacian 为零，因此 $\sigma$ 仅通过 $\sigma \cdot 1$ 项进入右端项，
-而不能写成 $f = ((2\pi)^2+(3\pi)^2+\sigma)\,u(x,y)$。
-在边界 $\partial\Omega$ 上，$\sin(2\pi x)\sin(3\pi y) = 0$，故 $g_D(x,y) = u\big|_{\partial\Omega} = 1$。
-
-图~\ref{fig:nonhom_bc} 展示了各求解器在不同 $\sigma$ 参数下的误差收敛曲线。
-实验结果证实：A1 bug 修复后，非齐次 Dirichlet 边界条件处理完全正确；
-FFT9 在所有 $\sigma$ 参数下均保持四阶收敛精度。
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.85\textwidth]{figures/exp02_nonhom_bc.png}
-\caption{非齐次 Dirichlet BC 验证：各 $\sigma$ 下误差随 $h$ 的变化（A1 bug fix 验证）}
-\label{fig:nonhom_bc}
-\end{figure}
-
-表~\ref{tab:nonhom_bc} 列出了数值收敛率（节选 $n=33 \to 65$ 的收敛阶）。
-FFT9 的收敛阶稳定在 4 附近，二阶格式（FA/CR/FACR）的收敛阶稳定在 2 附近，
-与理论预期一致，证实了 $\sigma$ 统一框架的正确性。
 
 \begin{table}[htbp]
 \centering
-\caption{非齐次 Dirichlet BC 验证：收敛率（$\sigma$ 统一框架）}
-\label{tab:nonhom_bc}
-\begin{tabular}{ccccccc}
+\caption{非特征多项式 manufactured solution 的收敛阶（$\sigma=10$）}
+\label{tab:exp01_poly_convergence}
+\begin{tabular}{cccc}
 \toprule
-$\sigma$ & 方程类型 & \multicolumn{2}{c}{FA / CR / FACR} & \multicolumn{2}{c}{FFT9} \\
-          &          & $L_\infty$ 误差 ($n=65$) & 阶 & $L_\infty$ 误差 ($n=65$) & 阶 \\
+方法 & $n$ & $L_\infty$ 误差 & 观测阶 \\
 \midrule
-0    & Poisson       & 1.50e-3 & 2.00 & 2.54e-8 & 4.19 \\
-10   & Modified H.   & 1.39e-3 & 2.00 & 2.36e-8 & 4.19 \\
-100  & Modified H.   & 8.42e-4 & 2.00 & 1.43e-8 & 4.19 \\
--5   & True H.       & 1.56e-3 & 2.00 & 2.64e-8 & 4.19 \\
+FA / CR / FACR & 33  & $8.92\times10^{-6}$  & $2.00$ \\
+FA / CR / FACR & 65  & $2.23\times10^{-6}$  & $2.00$ \\
+FA / CR / FACR & 129 & $5.57\times10^{-7}$  & $2.00$ \\
+FFT9           & 33  & $8.81\times10^{-9}$  & $4.00$ \\
+FFT9           & 65  & $5.51\times10^{-10}$ & $4.00$ \\
+FFT9           & 129 & $3.44\times10^{-11}$ & $4.00$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-% ===== 实验十五 =====
-\subsection{实验十五：Modified Helmholtz 与 True Helmholtz 的谱对比}\label{sec:exp15_mod_vs_true}
+结果表明，FA、CR、FACR 对应的五点差分格式稳定呈现二阶精度，
+FFT9 Dirichlet 紧致格式稳定呈现四阶精度。
+该结论由 Fourier/Taylor 推导、模态测试和非特征多项式测试共同支撑。
+本实验只验证离散格式收敛轨道，不用于判断 GMRES 迭代行为。
 
-本实验对比 $(-\nabla^2 + \sigma)u = f$（$\sigma > 0$，Modified Helmholtz）
-与 $(-\nabla^2 - \kappa^2)u = f$（$\sigma = -\kappa^2 < 0$，True Helmholtz）
-的谱性质差异。通过 \texttt{compute\_spectral\_indicators} 计算频域分母的最小值
-（$\text{min\_denominator}$，记为 $d_{\min}$）和谱条件数指标，
-揭示两类方程数值求解的难度差异。
+\subsection{实验三：非齐次 Dirichlet 边界条件验证}
 
-图~\ref{fig:exp04_spectral} 展示了 $d_{\min}$ 和谱条件数指标随 $|\sigma|$ 的变化。
-Modified Helmholtz 的 $d_{\min}$ 随 $\sigma$ 增大而增大，
-谱条件数随之改善；True Helmholtz 的 $d_{\min}$ 随 $k^2$ 增大而减小，
-谱条件数恶化，与理论预期一致。
-这也解释了为何 True Helmholtz 在高波数下难以求解。
+本实验对应脚本 \texttt{exp02\_nonhom\_bc.py}。
+取
+\begin{equation}
+  u(x,y)=\sin(2\pi x)\sin(3\pi y)+1,
+\end{equation}
+因此边界上 $g_D=1$，为真正的非齐次 Dirichlet 边界。
+对应右端项为
+\begin{equation}
+  f(x,y)=\bigl((2\pi)^2+(3\pi)^2+\sigma\bigr)\sin(2\pi x)\sin(3\pi y)+\sigma.
+\end{equation}
+常数 $1$ 的 Laplacian 为零，因此不能写成
+$((2\pi)^2+(3\pi)^2+\sigma)u(x,y)$。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.82\textwidth]{figures/exp02_nonhom_bc.png}
+\caption{非齐次 Dirichlet 边界条件下的误差收敛}
+\label{fig:exp02_nonhom_bc}
+\end{figure}
+
+\begin{table}[htbp]
+\centering
+\caption{非齐次 Dirichlet 边界验证（$n=65$）}
+\label{tab:exp02_nonhom_bc}
+\begin{tabular}{ccccc}
+\toprule
+$\sigma$ & 方程类型 & 五点格式误差 & 五点格式阶 & FFT9 误差 / 阶 \\
+\midrule
+$0$    & Poisson     & $1.50\times10^{-3}$ & $2.00$ & $2.54\times10^{-8}$ / $4.19$ \\
+$10$   & Modified H. & $1.39\times10^{-3}$ & $2.00$ & $2.36\times10^{-8}$ / $4.19$ \\
+$100$  & Modified H. & $8.42\times10^{-4}$ & $2.00$ & $1.43\times10^{-8}$ / $4.19$ \\
+$-5$   & True H.     & $1.56\times10^{-3}$ & $2.00$ & $2.64\times10^{-8}$ / $4.19$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+表~\ref{tab:exp02_nonhom_bc} 说明，边界值移项符号修正后，
+五点格式保持二阶收敛，FFT9 保持约四阶收敛。
+这验证了非齐次 Dirichlet 情形下右端项和边界修正的实现一致性，
+不涉及 Neumann 或混合边界的九点紧致格式推广。
+
+\subsection{实验四：Neumann 与混合边界条件验证}
+
+本实验对应脚本 \texttt{exp03\_neumann\_mixed.py}。
+五点格式通过 ghost-point 方法和对称化 DCT-I/DST-I 组合处理 Neumann 与混合边界。
+纯 Neumann Poisson 情形下，误差比较需去除常数偏移；
+本文使用与 DCT-I 权重一致的 trapezoid-weighted mean。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.82\textwidth]{figures/exp03_neumann_mixed.png}
+\caption{Neumann 与混合边界条件下的收敛验证}
+\label{fig:exp03_neumann_mixed}
+\end{figure}
+
+\begin{table}[htbp]
+\centering
+\caption{Neumann 与混合边界代表结果（FA，$n=65$）}
+\label{tab:exp03_neumann_mixed}
+\begin{tabular}{ccccc}
+\toprule
+子实验 & 边界类型 & $\sigma$ & $L_\infty$ 误差 & 观测阶 \\
+\midrule
+Pure Neumann & Neumann & $1$  & $1.91\times10^{-4}$ & $2.00$ \\
+Pure Neumann & Neumann & $10$ & $1.33\times10^{-4}$ & $2.00$ \\
+Mixed        & $(N,D)$ & $10$ & $1.33\times10^{-4}$ & $2.00$ \\
+Neumann Poisson & Neumann & $0$ & $2.01\times10^{-4}$ & $2.00$ \\
+Mixed        & $(D,N)$ & $10$ & $1.33\times10^{-4}$ & $2.00$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+结果表明，ghost-point 对称化方法能够将 Neumann 和混合边界稳定纳入五点 FFT 框架。
+需要注意的是，本实验不声称 FFT9 已支持 Neumann 或混合边界四阶格式；
+FFT9 的四阶验证仅限 Dirichlet 边界。
+因此，实验四验证的是受支持五点求解器的 Neumann/mixed 处理，不证明 FFT9 的 Neumann/mixed 四阶性。
+
+\subsection{实验五：Modified 与 True Helmholtz 的谱指标和 GMRES 行为}
+
+本实验对应脚本 \texttt{exp04\_modified\_vs\_true.py}。
+谱指标由五点 Dirichlet 离散分母
+\begin{equation}
+  d_{p,q}=\lambda_{p,q}+\sigma
+\end{equation}
+给出。
+当 $\sigma>0$ 时，modified Helmholtz 的分母恒正；
+当 $\sigma<0$ 时，true Helmholtz 可能因 $-\sigma\approx\lambda_{p,q}$ 出现小分母和病态性。
+GMRES 迭代实验使用 Gaussian 型非特征右端项
+$f=\exp(-80((x-0.37)^2+(y-0.61)^2))$，
+以避免单一 Fourier 模态造成的一步收敛退化。
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.48\textwidth]{figures/exp04_min_denom_vs_sigma.png}
 \includegraphics[width=0.48\textwidth]{figures/exp04_spectral_indicator_vs_sigma.png}
-\caption{Modified vs True Helmholtz：频域分母最小值 $d_{\min}$（左）与谱条件数指标（右）}
+\caption{Modified/true Helmholtz 的最小频域分母与谱条件数指标}
 \label{fig:exp04_spectral}
 \end{figure}
 
-图~\ref{fig:exp04_gmres} 展示了 GMRES 迭代次数随 $\sigma$ 的变化。
-本实验使用 Gaussian 型非特征右端项 $f = \exp(-80((x-0.37)^2+(y-0.61)^2))$，
-因此迭代次数可反映一般右端项下的收敛行为。
-对 modified Helmholtz，$\sigma$ 增大时条件数改善，GMRES 迭代减少；
-对 true Helmholtz，$|\sigma|$ 增大时频域分母趋零，GMRES 迭代增加。
-
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.6\textwidth]{figures/exp04_gmres_iters_vs_sigma.png}
-\caption{Modified vs True Helmholtz：GMRES 迭代次数对比}
+\includegraphics[width=0.68\textwidth]{figures/exp04_gmres_iters_vs_sigma.png}
+\caption{Gaussian RHS 下无预处理 GMRES 迭代次数对比}
 \label{fig:exp04_gmres}
 \end{figure}
 
-表~\ref{tab:exp15_mod_vs_true} 定量列出了 $n=33$ 时各 $\sigma$ 对应的谱指标与 GMRES 迭代次数。
-Modified Helmholtz 的 $d_{\min}$ 恒正且随 $\sigma$ 增大，
-不会出现共振；True Helmholtz 当 $d_{\min} \approx 0$ 时发生共振，
-对应离散特征值与连续问题特征值重合的特殊网格参数。
-本文通过频域分母 $d_{p,q}=\lambda_{p,q}-\kappa^2$ 分析指出 true Helmholtz
-在 $\kappa^2$ 接近离散 Laplacian 特征值时存在近共振风险。
-近共振扫描实验（实验十六）进一步验证了这一理论分析。
+\begin{table}[htbp]
+\centering
+\caption{Modified/true Helmholtz 谱指标与 GMRES 迭代次数（$n=33$）}
+\label{tab:exp04_mod_true}
+\begin{tabular}{cccccc}
+\toprule
+$\sigma$ & 方程类型 & $d_{\min}$ & 谱指标 & GMRES 迭代 & 状态 \\
+\midrule
+$1$    & Modified & $20.72$ & $3.94\times10^2$ & $256$ & 收敛 \\
+$10$   & Modified & $29.72$ & $2.75\times10^2$ & $203$ & 收敛 \\
+$100$  & Modified & $119.72$ & $6.91\times10^1$ & $91$ & 收敛 \\
+$1000$ & Modified & $1019.72$ & $8.99$ & $27$ & 收敛 \\
+\midrule
+$-1$   & True & $18.72$ & $4.36\times10^2$ & $270$ & 收敛 \\
+$-5$   & True & $14.72$ & $5.55\times10^2$ & $319$ & 收敛 \\
+$-10$  & True & $9.72$  & $8.39\times10^2$ & $428$ & 收敛 \\
+$-50$  & True & $0.79$  & $1.03\times10^4$ & $>500$ & 近共振 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\subsection{实验十六：True Helmholtz 近共振扫描}\label{sec:exp16_resonance}
+表~\ref{tab:exp04_mod_true} 显示，modified Helmholtz 随 $\sigma$ 增大远离小分母，
+谱指标改善，无预处理 GMRES 迭代次数下降；
+true Helmholtz 随 $|\sigma|$ 接近离散 Laplacian 特征值而出现小分母风险，
+GMRES 迭代变慢甚至在给定上限内未收敛。
+该实验只观察 Gaussian RHS 下无预处理 GMRES 的参数敏感性，不构成完整迭代法性能研究。
 
-本实验系统扫描 $\sigma$ 接近离散 Laplacian 特征值时的求解行为。
-取目标模态 $(p,q)=(2,1)$，其离散特征值为
+\subsection{实验六：True Helmholtz 近共振扫描}
+
+本实验对应脚本 \texttt{exp05\_true\_helmholtz\_resonance.py}。
+取 $n=65$，目标模态 $(p,q)=(2,1)$，
+离散特征值 $\lambda_{2,1}^h\approx49.3143$，
+令
 \begin{equation}
-\lambda_{2,1}^h = \frac{4}{h^2}\left[\sin^2\frac{2\pi}{2(N+1)}+\sin^2\frac{\pi}{2(N+1)}\right],
+  \sigma=-(\lambda_{2,1}^h+\delta),
 \end{equation}
-令 $\sigma = -(\lambda_{2,1}^h + \delta)$，
-扫描 $\delta \in \{\pm 10^{-1}, \pm 10^{-2}, \pm 10^{-3}, \pm 10^{-4}\}$，
-使用 Gaussian 型右端项 $f = \exp(-80((x-0.37)^2+(y-0.61)^2))$。
-
-图~\ref{fig:exp05_resonance} 展示了近共振扫描结果：
-当 $|\delta|$ 减小时，最小频域分母 $d_{\min}$ 同步下降，
-解范数 $\|u\|_\infty$ 出现放大，
-无预处理 GMRES 在所有近共振参数下均未能在 1001 次迭代内收敛。
-这与频域表达 $\hat{u}_{p,q} = \hat{f}_{p,q}/(\lambda_{p,q}^h + \sigma)$ 完全一致——
-当分母趋零时，对应模态的解分量被放大，线性系统变病态。
-值得注意的是，FFT 直接法（FA）在所有近共振参数下仍能正确求解，
-但解范数随 $d_{\min}$ 减小而放大，体现了共振的物理含义。
+并扫描正负两侧的小扰动 $\delta$。
+右端项仍采用 Gaussian 型非特征函数。
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/exp05_resonance.png}
-\caption{近共振扫描：$d_{\min}$、解范数和 GMRES 迭代次数随 $|\delta|$ 变化
-（$n=65$，目标模态 $(2,1)$）}
+\caption{True Helmholtz 近共振扫描：$d_{\min}$、解范数和 GMRES 迭代随 $|\delta|$ 的变化}
 \label{fig:exp05_resonance}
 \end{figure}
 
-该实验验证了 true Helmholtz 方程的近共振风险：
-当 $\kappa^2$ 接近离散 Laplacian 特征值时，
-频域分母趋零导致解范数放大和迭代困难。
-这也解释了为何 true Helmholtz 在高波数下通常需要预处理技术（如 shifted Laplacian）。
-
 \begin{table}[htbp]
 \centering
-\caption{Modified vs True Helmholtz：谱指标与 GMRES 迭代次数（$n=33$，Gaussian RHS）}
-\label{tab:exp15_mod_vs_true}
-\begin{tabular}{cccccc}
+\caption{近共振扫描代表数据（$n=65$）}
+\label{tab:exp05_resonance}
+\begin{tabular}{cccc}
 \toprule
-$\sigma$ & 方程类型 & $d_{\min}$ & 谱条件数指标 & GMRES 迭代 & 状态 \\
+$|\delta|$ & $d_{\min}$ & $\|u\|_\infty$ & GMRES 迭代 \\
 \midrule
-1    & Modified & 20.72 & $3.94\times10^2$ & 256 & 收敛 \\
-10   & Modified & 29.72 & $2.75\times10^2$ & 203 & 收敛 \\
-100  & Modified & 119.72 & $6.91\times10^1$ & 91 & 收敛 \\
-\midrule
--1   & True     & 18.72 & $4.36\times10^2$ & 270 & 收敛 \\
--5   & True     & 14.72 & $5.55\times10^2$ & 319 & 收敛 \\
--10  & True     & 9.72  & $8.39\times10^2$ & 428 & 收敛 \\
-\midrule
--50  & True     & 0.79  & $1.03\times10^4$ & $>500$ & 近共振 \\
+$10^{-1}$ & $1.00\times10^{-1}$ & $1.32$ & $1001$（未收敛） \\
+$10^{-2}$ & $1.00\times10^{-2}$ & $13.19$ & $1001$（未收敛） \\
+$10^{-3}$ & $1.00\times10^{-3}$ & $131.92$ & $1001$（未收敛） \\
+$10^{-4}$ & $1.00\times10^{-4}$ & $1.32\times10^{3}$ & $1001$（未收敛） \\
 \bottomrule
 \end{tabular}
-\begin{flushleft}
-\footnotesize 注：GMRES 使用 Gaussian 型非特征右端项，restart=30，tol=$10^{-10}$（绝对残差）；
-"近共振"行 $\sigma=-50$ 接近离散特征值 $\lambda_{2,1}^h\approx 49.3$，GMRES 在 500 次迭代内未收敛；
-Modified H. 的 $\sigma$ 增大时条件数改善，迭代减少；True H. 的 $|\sigma|$ 增大时条件数恶化，迭代增加。
-更大网格 $n=65$（$\mathrm{dof}=3969$）时无预处理 GMRES 对 $\sigma \le 10$ 均不收敛（501 次），
-需预处理方可有效求解。
-\end{flushleft}
 \end{table}
 
+结果验证了第\ref{sec:helmholtz}章的频域分析：
+当 $\kappa^2$ 接近离散 Laplacian 特征值时，最小分母 $d_{\min}$ 下降，
+对应模态的解分量被放大，线性系统变得病态。
+无预处理 GMRES 在这些近共振参数下无法在给定迭代上限内收敛，
+说明 true Helmholtz 问题通常需要 shifted-Laplacian 等预处理技术。
+该结论仅针对 true Helmholtz 近共振扫描，不外推为一般波数性能比较。
 
+\subsection{实验总结}
+
+本章将原有大量历史实验压缩为六组可复现的核心实验。
+实验一验证 FFT 类五点求解器与稀疏直接解的一致性；
+实验二验证五点格式二阶和 FFT9 Dirichlet 紧致格式四阶；
+实验三验证非齐次 Dirichlet 右端项与边界修正符号；
+实验四验证 Neumann 与混合边界在五点 FFT 框架中的处理；
+实验五和实验六分别从远离共振的谱指标和近共振扫描两方面说明 modified/true Helmholtz 的本质差异。
+
+由这些实验可得：
+\begin{itemize}[itemsep=2pt]
+  \item 对规则单位正方形和均匀网格，FFT 直接法能够高精度求解对应离散系统；
+  \item 五点格式和 FFT9 Dirichlet 紧致格式分别呈现二阶和四阶精度；
+  \item 非齐次 Dirichlet、Neumann 与混合边界的实现已通过离散一致性或收敛阶验证；
+  \item modified Helmholtz 与 true Helmholtz 的差异来自频域分母结构，不能把二者的迭代行为混写；
+  \item true Helmholtz 在近共振时出现解范数放大和无预处理 GMRES 收敛困难。
+\end{itemize}
+
+本章不再保留无统计重复计时、装饰性热力图、GMRES 重启参数图或单独复杂度趋势图作为核心证据。
+这些材料可作为探索性输出留存在图像目录中，但不参与本文最终结论。

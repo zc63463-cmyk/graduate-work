@@ -42,8 +42,8 @@ Poisson 方程与 modified Helmholtz 方程的离散矩阵均为对称正定，
 对于非规则区域或变系数问题，迭代法（如 GMRES）更具灵活性，
 但收敛速度受矩阵条件数影响，通常需要预处理技术加速。
 
-因此，系统对比 FFT 直接法与 GMRES 迭代法在不同条件下的求解性能，
-对于选择合适的数值方法具有重要的理论和实践意义。
+因此，在统一差分框架下实现 FFT 直接法，并以 GMRES 作为迭代法参照来观察谱性质对收敛行为的影响，
+对于理解规则网格上不同求解策略的适用范围具有重要意义。
 
 \subsection{国内外研究现状}
 
@@ -52,7 +52,7 @@ Poisson 方程与 modified Helmholtz 方程的离散矩阵均为对称正定，
 Hockney \cite{Hockney1965} 首先提出了利用 Fourier 分析求解
 离散 Poisson 方程的方法，计算复杂度为 $O(N^2 \log N)$。
 Buzbee 等 \cite{Buzbee1970} 系统分析了循环约化（CR）方法，
-并提出了 FACR 混合算法，在最优参数下达到 $O(N^2 \log\log N)$ 的复杂度。
+并提出了经典 FACR 混合算法，其理论最优复杂度可达 $O(N^2 \log\log N)$。
 Swarztrauber \cite{Swarztrauber1977} 对 CR、FA 和 FACR 方法
 进行了完整的理论分析，明确了各种方法的理论复杂度。
 Houstis 和 Papatheodorou \cite{HoustisPapatheodorou1979a, HoustisPapatheodorou1979b}
@@ -98,12 +98,13 @@ Saad \cite{Saad2003} 对 Krylov 子空间方法做了系统总结。
 本文的主要工作和创新点如下：
 
 \begin{enumerate}[itemsep=2pt]
-  \item 在统一的 $(-\nabla^2+\sigma)u=f$ 框架下，系统实现了基于 FFT 的五种快速直接求解器
-        （FA、CR、FACR、FFT9、5点基准），支持 Dirichlet、Neumann 和混合边界条件，
+  \item 在统一的 $(-\nabla^2+\sigma)u=f$ 框架下，系统实现了 FA、CR、FACR-like 与五点基准等 FFT 直接求解器，
+        覆盖 Dirichlet、Neumann 和混合边界条件；同时实现并验证了针对 Dirichlet 边界的 FFT9 四阶紧致差分求解器，
         并明确区分 modified Helmholtz（$\sigma=+\kappa^2$，正定）与 true Helmholtz（$\sigma=-\kappa^2$，不定）；
   \item 对 Neumann 边界条件，采用 ghost-point 方法配合对称化 DCT-I 变换，解决了非对称 Laplacian 矩阵的对角化问题；
   \item 实现了基于 Givens 旋转的 GMRES 迭代法，构造了 2D Helmholtz 稀疏矩阵，
-        与 FFT 直接法进行了系统对比，并分析了 modified/true Helmholtz 方程下迭代行为的本质差异；
+        通过 Gaussian 型非特征右端项和近共振扫描分析 modified/true Helmholtz 方程下
+        频域分母和无预处理 Krylov 行为的本质差异；
   \item 通过 Fourier 特征值分析证明了三参数九点修正族的六阶不可行性，
         为四阶紧致格式是最优选择提供了理论依据，并利用 Lean 4 进行了辅助形式化校验。
 \end{enumerate}

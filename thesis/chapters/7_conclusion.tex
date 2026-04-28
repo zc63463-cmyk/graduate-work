@@ -8,7 +8,7 @@
 
 本文针对矩形区域上的 Poisson 方程和 Helmholtz 方程，
 在统一的 $(-\nabla^2+\sigma)u=f$ 框架下，
-系统研究了基于 FFT 的快速直接求解方法，并与 GMRES 迭代法进行了对比分析。
+研究了基于 FFT 的快速直接求解方法，并以 GMRES 迭代法作为参照观察谱性质对 Krylov 收敛行为的影响。
 主要工作和贡献如下：
 
 \begin{enumerate}
@@ -42,12 +42,12 @@
         该结论已在 Lean 4 定理证明器中完成辅助形式化校验
         （整数域 12 定理 + 实数域 8 定理，含 Helmholtz 不可行性验证）。
 
-  \item \textbf{GMRES 迭代法对比}：实现了基于 Givens 旋转的 GMRES(m) 算法，
+  \item \textbf{GMRES 迭代行为观察}：实现了基于 Givens 旋转的 GMRES(m) 算法，
         构造了二维 Helmholtz 方程的五点差分稀疏矩阵，
-        在相同测试问题下与 FFT 直接法进行了系统的精度、效率和收敛性对比。
+        并使用 Gaussian 型非特征右端项观察无预处理 Krylov 方法对谱性质的敏感性。
         对 modified Helmholtz 方程 $\sigma=+\kappa^2$，
         $\kappa^2$ 增大使频域分母远离零并改善条件数，
-        因此无预处理 GMRES 迭代次数减少。
+        在本文测试范围内无预处理 GMRES 迭代次数呈下降趋势。
         对 true Helmholtz 方程 $\sigma=-\kappa^2$，
         通过近共振扫描实验验证了频域分母趋零时解范数放大和迭代困难的现象。
 \end{enumerate}
@@ -55,28 +55,29 @@
 \subsection{主要结论}
 
 \begin{enumerate}
-  \item 在规则矩形区域上，FFT 直接法是求解 Poisson/Helmholtz 方程的首选方法。
-        FA 方法实现简单、效率高；FACR 方法在细网格下进一步降低常数因子；
+  \item 在规则矩形区域和均匀网格上，FFT 直接法可以高效求解对应离散系统。
+        FA 方法实现简单；FACR-like 方法在当前实现中主要体现为常数因子层面的改进；
         FFT9 方法以适度的额外计算量换取四阶精度。
 
-  \item GMRES 迭代法在规则区域上的效率不如 FFT 直接法，
-        但具有更好的通用性——它可以处理非均匀网格、
-        变系数问题和复杂几何区域，这些是 FFT 直接法难以处理的。
+  \item 无预处理 GMRES 对离散矩阵的谱性质较为敏感。
+        在规则区域上它不是 FFT 直接法的替代品，
+        但作为通用 Krylov 方法，后续可与预处理技术结合用于非均匀网格、
+        变系数问题和复杂几何区域。
 
   \item 波数参数 $\sigma$ 对求解效果的影响因方程类型而异：
         \begin{itemize}[itemsep=2pt]
           \item Modified Helmholtz（$\sigma=+\kappa^2$）：
                 $\kappa^2$ 的加入使矩阵更对角占优，条件数改善，
-                GMRES 迭代次数随 $\kappa^2$ 增大而减少；
-                FFT 直接法求解无条件稳定。
+                本文 Gaussian RHS 扫描中 GMRES 迭代次数随 $\kappa^2$ 增大呈下降趋势；
+                FFT 直接法的频域分母保持为正，未出现 true Helmholtz 的小分母共振现象。
           \item True Helmholtz（$\sigma=-\kappa^2$）：
                 当 $\kappa^2$ 接近某特征值时出现共振，
                 频域除数接近零，解范数急剧增大；
-                近共振扫描实验系统验证了 $|\delta|$ 减小时频域分母趋零、
+                近共振扫描实验显示 $|\delta|$ 减小时频域分母趋零、
                 解范数放大和无预处理 GMRES 无法收敛的行为；
                 实际应用中需使用 MINRES/GMRES 配合 shifted-Laplacian 预处理。
         \end{itemize}
-        因此，不能笼统地说"波数增大导致求解困难"，
+        因此，不能笼统地说“波数增大导致求解困难”。
         必须区分 modified 与 true Helmholtz 两类方程。
 
   \item Ghost-point 对称化 DCT-I 方法是处理 Neumann 边界条件的一种优雅方案，
@@ -100,7 +101,8 @@
 
   \item \textbf{高维问题}：本文的方法可以自然推广到三维问题。
         三维问题的 FFT 直接法复杂度为 $O(N^3 \log N)$，
-        FACR 理论最优可达 $O(N^3 \log\log N)$（实际实现为 $O(N^3 \log N)$），
+        本文 FACR-like 实现仍属于 $O(N^2\log N)$ 的二维基线；
+        三维经典 FACR 的复杂度优化不在本文实现和实验验证范围内，
         但内存需求随维数快速增长，需要更高效的实现策略。
 
   \item \textbf{大规模 true Helmholtz 问题}：对于高频（大波数）true Helmholtz 方程，
