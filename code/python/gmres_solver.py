@@ -51,7 +51,7 @@ def gmres(A, b, x0=None, tol=1e-6, max_iter=100, restart=30,
     x0 : array_like, optional
         Initial guess (default: zeros)
     tol : float
-        Convergence tolerance (relative residual)
+        Convergence tolerance (absolute residual norm)
     max_iter : int
         Maximum total iterations
     restart : int
@@ -542,7 +542,7 @@ def gmres_helmholtz(n, f_func, bc_func, k2=None, bc_type='dirichlet',
     sx, sy : float
         Domain sizes
     tol : float
-        GMRES convergence tolerance
+        GMRES convergence tolerance (absolute residual)
     max_iter : int, optional
         Maximum GMRES iterations (default: 10 * N)
     restart : int

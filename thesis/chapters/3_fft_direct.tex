@@ -253,25 +253,37 @@ $\hat{\Lambda}_R = \mathrm{diag}(\hat{\lambda}_R(p,q))$ 为对角矩阵，
 由于 $-\hat{\Lambda}_L + \sigma\hat{\Lambda}_R$ 是对角矩阵，
 方程~\eqref{eq:freq_compact}可逐模式求解：
 \begin{equation}
-  \hat{u}_{p,q} = \frac{\hat{\lambda}_R(p,q)}{-\hat{\lambda}_L(p,q) + \sigma\hat{\lambda}_R(p,q)} \hat{f}_{p,q}
-  = \frac{\hat{f}_{p,q}}{-\hat{\lambda}_L(p,q)/\hat{\lambda}_R(p,q) + \sigma}
+  \hat{u}_{p,q} = \frac{\hat{\lambda}_R(p,q)\,\hat{f}_{p,q}}{-\hat{\lambda}_L(p,q) + \sigma\,\hat{\lambda}_R(p,q)}
   \label{eq:fft9_freq}
 \end{equation}
-
-有效频域除数为：
+其中 $\hat{f}_{p,q}$ 为 $R_h f$（含边界修正后的物理空间右端项 $\tilde{g}$）经 DST-I 变换后的频域表示。
+原始频域除数为：
 \begin{equation}
-  D_{p,q}^{(9)} = -\frac{\hat{\lambda}_L(p,q)}{\hat{\lambda}_R(p,q)} + \sigma
+  D_{p,q}^{\mathrm{raw}} = -\hat{\lambda}_L(p,q) + \sigma\,\hat{\lambda}_R(p,q)
   \label{eq:fft9_divisor}
 \end{equation}
-由定理~\ref{thm:4th_order}，$D_{p,q}^{(9)} = (\xi_p^2+\eta_q^2+\sigma) + O(h^4)$，
+该形式直接对应离散系统 $(-L_h+\sigma R_h)\mathbf{u}=R_h\mathbf{f}$ 在频域的对角化，
+物理空间右端项 $R_h f$（含边界修正）经 DST-I 后记为 $\hat{\tilde{g}}$，
+则 $\hat{u}_{p,q} = \hat{\tilde{g}}_{p,q}/D_{p,q}^{\mathrm{raw}}$。
+
+等价地，若对原始右端项 $f$ 做 DST-I 得到 $\hat{f}$，
+则 $\hat{\tilde{g}}_{p,q}=\hat{\lambda}_R(p,q)\hat{f}_{p,q}$，代入可得有效除数形式：
+\begin{equation}
+  \hat{u}_{p,q} = \frac{\hat{f}_{p,q}}{-\hat{\lambda}_L(p,q)/\hat{\lambda}_R(p,q) + \sigma}
+  \label{eq:fft9_freq_eff}
+\end{equation}
+两种形式在数学上等价。本文实现和算法描述统一采用原始除数 $D_{p,q}^{\mathrm{raw}}$，
+以避免非齐次 Dirichlet 边界修正中 $R_h$ 与有效除数形式之间的混淆。
+
+由定理~\ref{thm:4th_order}，$D_{p,q}^{\mathrm{raw}}/\hat{\lambda}_R(p,q) = (\xi_p^2+\eta_q^2+\sigma) + O(h^4)$，
 因此频域求解的精度为 $O(h^4)$。
 
 \begin{remark}
   对于 modified Helmholtz（$\sigma=+\kappa^2$），
-  因 $-\hat{\lambda}_L > 0$ 且 $\hat{\lambda}_R > 0$，频域除数 $D_{p,q}^{(9)} > 0$ 恒成立，
+  因 $-\hat{\lambda}_L > 0$ 且 $\hat{\lambda}_R > 0$，原始频域除数 $D_{p,q}^{\mathrm{raw}} = -\hat{\lambda}_L+\sigma\hat{\lambda}_R > 0$ 恒成立，
   矩阵正定，求解无条件稳定。
   对于 true Helmholtz（$\sigma=-\kappa^2$），
-  当 $-\hat{\lambda}_L(p,q)/\hat{\lambda}_R(p,q) \approx \kappa^2$ 时分母接近零，
+  当 $-\hat{\lambda}_L(p,q) \approx \kappa^2\hat{\lambda}_R(p,q)$ 时分母接近零，
   出现近共振现象。
 \end{remark}
 
@@ -291,19 +303,22 @@ $R_h$ 会将边界值传播到相邻内节点。
 例如，若 $(i,1)$ 为邻边界内节点（$j=0$ 为边界），
 则 $R_h f_{i,1}$ 中的 $f_{i,0}$ 项需要用边界信息修正：
 
-\begin{lemma}[$R_h$ 边界修正的频域等价]
-  \label{lem:Rh_boundary_freq}
-  在频域中，$R_h$ 对边界修正的影响可等价地视为对频域右端项 $\hat{g}$ 的附加贡献。
-  具体地，非齐次边界条件 $g_D$ 产生的额外频域源项为：
+\begin{remark}[物理空间边界修正策略]
+  \label{rem:Rh_boundary_freq}
+  非齐次 Dirichlet 边界条件下，$L_h$ 与 $R_h$ 的模板会在邻接边界的内节点处包含已知边界值。
+  本文实现采用物理空间移项方案：先将所有边界贡献并入修正右端项 $\tilde{g}$，
+  再对 $\tilde{g}$ 做二维 DST-I 变换。这样可保证边界处理与离散系统 $(-L_h+\sigma R_h)$ 完全一致，
+  且无需单独构造频域边界修正公式。具体地，对内节点和边界值分块
+  $(-L_{II}+\sigma R_{II})u_I + (-L_{IB}+\sigma R_{IB})g_B = (R_h f)_I$，
+  修正右端项为
   \begin{equation}
-    \Delta\hat{g}_{p,q} = -\hat{\lambda}_R(p,q)^{-1} \cdot \hat{b}_{p,q}
+    \tilde{g} = (R_h f)_I + L_{IB}\,g_B - \sigma\,R_{IB}\,g_B
+    \label{eq:bnd_correction_general}
   \end{equation}
-  其中 $\hat{b}_{p,q}$ 为边界贡献 $b_{i,j}$ 经 DST-I 变换后的频域表示。
-
-  该结论的关键在于：$R_h$ 对内节点值的修正（含边界传播）
-  在 DST-I 变换后等价于对频域右端项的线性修正，
-  不改变频域除数 $D_{p,q}^{(9)}$ 的结构。
-\end{lemma}
+  其中 $L_{IB}\,g_B$ 项来自 $L_h$ 中边界值贡献（移项后加号），
+  $-\sigma R_{IB}\,g_B$ 项来自 $\sigma R_h$ 中边界值贡献（移项后减号）。
+  该策略无需在频域引入 $\hat{\lambda}_R^{-1}$ 等额外除法运算，避免了推导风险。
+\end{remark}
 
 \begin{remark}[物理空间中的边界修正计算]
   在实际计算中，非齐次边界修正可以在物理空间直接完成，
@@ -311,14 +326,14 @@ $R_h$ 会将边界值传播到相邻内节点。
   以邻接 $y=0$ 边界的内节点 $(i,1)$ 为例（$j=0$ 为边界行），
   紧致格式 $(-L_h+\sigma R_h)u = R_h f$ 中，
   边界值 $g_D$ 出现在 $L_h$ 和 $\sigma R_h$ 的模板中，
-  修正后的等效右端项为：
+  移至右端后修正的等效右端项为：
   \begin{equation}
-    \tilde{g}_{i,1} = R_h f_{i,1} + \frac{\sigma}{12}g_D(x_i, 0)
-    - \frac{1}{6h^2}\left[g_D(x_{i-1},0)+g_D(x_{i+1},0)+4g_D(x_i,0)\right]
+    \tilde{g}_{i,1} = (R_h f)_{i,1} + \frac{1}{6h^2}\left[g_D(x_{i-1},0)+4g_D(x_i,0)+g_D(x_{i+1},0)\right]
+    - \frac{\sigma}{12}\,g_D(x_i, 0)
     \label{eq:bnd_correction}
   \end{equation}
-  其中第一项来自 $\sigma R_h$ 中边界值的贡献（加号，因为边界值从左端移至右端），
-  第二项来自 $L_h$（$L_h \approx \Delta$）中边界值产生的等效源项（负号，因为 $-L_h$ 作用后边界贡献取反）。
+  其中第二项来自 $L_h$（$L_h \approx \Delta$）中边界值产生的等效源项（加号，因为 $-L_h$ 作用后边界贡献取反，移至右端变加号），
+  第三项来自 $\sigma R_h$ 中边界值的贡献（减号，因为 $\sigma R_h$ 中边界贡献在左端为正，移至右端变减号）。
   对四个边界的所有邻边界内节点均需做类似修正。
 \end{remark}
 
@@ -336,8 +351,8 @@ FFT9 方法与 FA/CR 方法在频域求解框架上具有相同的结构，
 性质 & FA/CR & FFT9 \\
 \midrule
 差分格式 & 五点（$O(h^2)$） & 九点紧致（$O(h^4)$） \\
-频域除数 & $(\mu_p+\mu_q)/h^2 + \sigma$ & $-\hat{\lambda}_L/\hat{\lambda}_R + \sigma$ \\
-右端项变换 & $\hat{f} = \mathcal{F}f$ & $\hat{g} = \mathcal{F}(R_h f)$ \\
+频域除数 & $(\mu_p+\mu_q)/h^2 + \sigma$ & $-\hat{\lambda}_L+\sigma\hat{\lambda}_R$ \\
+右端项变换 & $\hat{f} = \mathcal{F}f$ & $\hat{\tilde{g}} = \mathcal{F}(R_h f + \text{边界修正})$ \\
 计算量 & $O(N^2 \log N)$ & $O(N^2 \log N)$ \\
 精度 & $O(h^2)$ & $O(h^4)$ \\
 \bottomrule
@@ -355,10 +370,10 @@ FFT9 方法与 FA/CR 方法在频域求解框架上具有相同的结构，
 \begin{algorithmic}[1]
 \REQUIRE 网格大小 $n$，右端项 $f$，参数 $\sigma$
 \ENSURE 解 $u$（$O(h^4)$ 精度）
-\STATE 计算修正右端项：$g_{i,j} = R_h f_{i,j}$（含边界修正）
-\STATE 2D DST-I 变换：$\hat{g} = \mathrm{DST2D}(g)$
-\STATE 计算频域除数：$D_{p,q} = -\hat{\lambda}_L(p,q)/\hat{\lambda}_R(p,q) + \sigma$
-\STATE 频域求解：$\hat{u}_{p,q} = \hat{g}_{p,q} / D_{p,q}$
+\STATE 物理空间构造修正右端项：$\tilde{g} = (R_h f)_I + L_{IB}\,g_B - \sigma\,R_{IB}\,g_B$
+\STATE 2D DST-I 变换：$\hat{\tilde{g}} = \mathrm{DST2D}(\tilde{g})$
+\STATE 计算原始频域除数：$D_{p,q}^{\mathrm{raw}} = -\hat{\lambda}_L(p,q) + \sigma\,\hat{\lambda}_R(p,q)$
+\STATE 频域求解：$\hat{u}_{p,q} = \hat{\tilde{g}}_{p,q} \,/\, D_{p,q}^{\mathrm{raw}}$
 \STATE 逆 2D DST-I 变换：$U_{\mathrm{int}} = \mathrm{IDST2D}(\hat{u})$
 \STATE 组装完整解：填充边界值
 \end{algorithmic}
@@ -370,6 +385,13 @@ FFT9 方法的计算量与 FA 方法相同，为 $O(N^2 \log N)$，
 五点格式需要 $h = O(\epsilon^{1/2})$ 即 $N = O(\epsilon^{-1/2})$，
 而九点格式仅需 $h = O(\epsilon^{1/4})$ 即 $N = O(\epsilon^{-1/4})$，
 总计算量从 $O(\epsilon^{-1}\log\epsilon^{-1})$ 降至 $O(\epsilon^{-1/2}\log\epsilon^{-1/2})$。
+
+\begin{remark}[FFT9 的边界条件支持]
+  本文实现并验证的 FFT9 四阶紧致格式仅针对 Dirichlet 边界条件。
+  Neumann 或混合边界下的四阶紧致模板需要重新构造边界行和对应的 DCT/DST 对角化结构，
+  本文未实现，作为后续工作。
+  当 FFT9 遇到非 Dirichlet 边界时，本文代码会发出运行时警告并回退至二阶 FA 求解器。
+\end{remark}
 
 \subsection{复杂度分析与比较}
 
@@ -384,7 +406,7 @@ FFT9 方法的计算量与 FA 方法相同，为 $O(N^2 \log N)$，
 FA    & $O(N^2 \log N)$    & $O(h^2)$ & $O(N^2)$ & D, N, 混合 \\
 CR    & $O(N^2 \log N)$    & $O(h^2)$ & $O(N^2)$ & D, N, 混合 \\
 FACR  & $O(N^2 \log N)$\textsuperscript{$\dagger$} & $O(h^2)$ & $O(N^2)$ & D, N, 混合 \\
-FFT9  & $O(N^2 \log N)$    & $O(h^4)$ & $O(N^2)$ & D \\
+FFT9  & $O(N^2 \log N)$    & $O(h^4)$ & $O(N^2)$ & D\textrm{ 仅} \\
 GMRES & $O(m N^2)$         & $O(h^2)$ & $O(mN)$  & D, N \\
 \bottomrule
 \end{tabular}

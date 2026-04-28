@@ -148,7 +148,12 @@ $r = \sqrt{(h_{j,j}^{(j-1)})^2 + (h_{j+1,j}^{(j-1)})^2}$，
     \leq \left(1 - \frac{\lambda_{\min}^2}{\lambda_{\max} \|A\|^2}\right)^{m/2}
     \label{eq:gmres_bound}
   \end{equation}
-  对于五点差分格式下的各类方程，$\lambda_{\min}$ 和 $\lambda_{\max}$
+  上述收敛率估计依赖于 $A+A^T$ 正定，因此只适用于 Dirichlet Poisson、
+modified Helmholtz 等正定或强正定情形。对于 Neumann Poisson，
+离散矩阵存在常数零模态，需在满足兼容条件并去除零均值模态后讨论；
+对于 true Helmholtz，矩阵不定，该正定型收敛界不适用。
+
+对于五点差分格式下的各类方程，$\lambda_{\min}$ 和 $\lambda_{\max}$
   指 $A+A^T$ 的最小和最大特征值。对于 SPD 矩阵，即为 $A$ 本身的特征值。
   \begin{itemize}[itemsep=2pt]
     \item \textbf{Poisson}（$\sigma=0$，Dirichlet BC）：

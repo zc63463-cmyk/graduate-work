@@ -173,14 +173,14 @@ class TestFFT9vsSpsolve:
         n = 17
 
         def u_exact(x, y):
-            return np.sin(2 * np.pi * x) * np.sin(3 * np.pi * y)
+            return np.sin(2 * np.pi * x) * np.sin(3 * np.pi * y) + 1.0
 
         def f_rhs(x, y):
             lam = (2 * np.pi)**2 + (3 * np.pi)**2
-            return (lam + sigma) * np.sin(2 * np.pi * x) * np.sin(3 * np.pi * y)
+            return (lam + sigma) * np.sin(2 * np.pi * x) * np.sin(3 * np.pi * y) + sigma
 
         def bc(x, y):
-            return u_exact(x, y)
+            return 1.0  # u|∂Ω = 1
 
         U_fft9 = fft9_helmholtz(n, f_rhs, bc, sigma=sigma, method='4th')
 

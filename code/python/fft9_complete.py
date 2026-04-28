@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
 """
+Deprecated prototype.
+
+This module implements an early Poisson-only FFT9 prototype.
+For the unified sigma-framework Helmholtz/Poisson solver used in the thesis,
+please use helmholtz_solver.fft9_helmholtz.
+
+This file is kept only for historical comparison and is not used in final experiments.
+
+---
+
 FFT9 Algorithm - Complete Implementation
 =========================================
 

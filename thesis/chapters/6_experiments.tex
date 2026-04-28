@@ -9,6 +9,10 @@
 测试问题为矩形区域 $\Omega = [0,1]^2$ 上的统一框架方程
 $(-\nabla^2 + \sigma)u = f$。
 除特别说明外，默认实验采用 modified Helmholtz 参数 $\sigma = +k^2$（$k^2 > 0$）。
+本文理论框架可推广到可分离矩形区域 $[0,L_x]\times[0,L_y]$；
+为简化实现与实验展示，数值实验均在单位正方形 $[0,1]^2$ 和等距网格 $h_x=h_y$ 下进行。
+非正方形区域只需将频域分母改写为 $\mu_p/h_x^2 + \mu_q/h_y^2 + \sigma$，
+但本文未系统测试该情形。
 
 \subsection{测试问题}
 
@@ -62,6 +66,11 @@ $n$ & 误差 & 阶 & 误差 & 阶 & 误差 & 阶 \\
 
 实验结果表明，FA、CR、FACR 三种方法在相同网格下产生完全一致的数值解，
 收敛阶均精确为 $2.00$，与二阶差分格式的理论预期完全吻合。
+需要指出的是，本节采用的单模态三角函数精确解是离散 Laplacian 的特征函数，
+因此该实验能够清晰验证 DST/DCT 频域除法、边界条件处理以及理论收敛阶，
+但不能完全代表一般右端项下的迭代行为。
+为降低单模态带来的特殊性，后续实验进一步采用多模态组合、非齐次边界问题和多项式测试问题进行补充。
+本文关于二阶和四阶精度的判断主要依据 Taylor/Fourier 截断误差分析以及这些补充实验共同支撑。
 
 \subsubsection{四阶格式（FFT9 紧致差分）}
 
@@ -86,10 +95,9 @@ $n$ & 误差 & 收敛阶 \\
 \end{table}
 
 FFT9 的收敛阶精确为 $4.00$，与四阶紧致差分格式的理论预期一致。
-在相同网格下，FFT9 的精度显著高于五点差分格式：
-例如在 $n = 65$ 时，FFT9 的误差约为 $1.07 \times 10^{-8}$，
-而五点差分的误差约为 $1.33 \times 10^{-4}$，
-精度提升了约四个数量级。
+在 $n = 65$ 的测试网格上，FFT9 的最大误差约为 $1.07 \times 10^{-8}$，
+五点格式约为 $1.33 \times 10^{-4}$，绝对误差降低约四个数量级。
+这一现象与四阶格式相对于二阶格式的理论预期一致。
 
 图~\ref{fig:convergence_rates} 展示了各求解器的误差随网格间距的变化趋势，
 可以清晰地看到二阶方法和四阶方法的不同斜率。
@@ -171,7 +179,7 @@ Krylov 子空间方法在高维空间中需要更多迭代来收敛。
 \subsubsection{GMRES 收敛阶验证}
 
 表~\ref{tab:gmres_conv} 验证了 GMRES 求解 Helmholtz 方程的收敛阶。
-取 $k^2 = 10$，Dirichlet 边界条件，容差 $\varepsilon = 10^{-12}$，
+取 $k^2 = 10$，Dirichlet 边界条件，容差 $\varepsilon = 10^{-12}$（绝对残差范数），
 采用多项式测试问题 $u = x^2(1-x)^2 y^2(1-y)^2$。
 
 \begin{table}[htbp]
@@ -242,6 +250,9 @@ $n$ & FA & CR & FACR & FFT9 & GMRES(30) \\
 
 \begin{enumerate}
   \item \textbf{计算时间}：FFT 直接法的计算时间远小于 GMRES 迭代法。
+        本文计时实验采用单次运行结果，主要用于展示不同算法随网格规模变化的趋势，
+        而非严格性能基准。Python 环境下计时受缓存、系统负载和解释器开销影响，
+        绝对时间仅供参考。
         在 $n = 129$ 时，FA 仅需约 11ms，而 GMRES(30) 需要约 23 秒，
         差距超过 2000 倍。
         在 $n = 257$ 时，GMRES(30) 更是需要超过 91 秒，
@@ -258,6 +269,10 @@ $n$ & FA & CR & FACR & FFT9 & GMRES(30) \\
         从 $n=33$ 到 $n=257$，FA 的时间增长约 12 倍（符合 $O(N^2 \log N)$），
         而 GMRES 的时间增长约 2300 倍，体现了迭代法在大规模问题上的固有劣势。
         FACR 在中等规模问题上表现最优，体现了其混合策略的效率优势。
+        本文实现的 FACR-like 方法采用完整方向 DST 结合有限步奇偶约化，
+        实际复杂度仍为 $O(N^2 \log N)$。
+        实验中不同 $l$ 值带来的性能差异主要反映常数因子变化和缩减系统规模变化，
+        而不是经典 FACR 的 $O(N^2 \log\log N)$ 最优复杂度。
 \end{enumerate}
 
 图~\ref{fig:efficiency} 直观展示了直接法与迭代法在时间和精度上的对比。
@@ -328,8 +343,11 @@ $k^2$ & $n = 33$ & $n = 65$ & $n = 129$ \\
 \end{table}
 
 与直接法不同，GMRES 的迭代次数随波数参数呈现有趣的规律：
+对 modified Helmholtz 方程 $\sigma=+\kappa^2$，
+$\kappa^2$ 增大使频域分母远离零并改善条件数，因此无预处理 GMRES 迭代次数减少。
 当 $\kappa^2$ 较小时，modified Helmholtz 矩阵 $A = -\nabla_h^2 + \kappa^2 I$ 的条件数较大，
 GMRES 需要较多迭代；当 $\kappa^2$ 增大时，对角占优程度增强，条件数改善，迭代次数反而减少。
+该结论不适用于 true Helmholtz 方程 $\sigma=-\kappa^2$。
 具体而言，$\kappa^2 = 0$（Poisson 方程）时条件数最大，$n=129$ 需要 2875 次迭代；
 而 $\kappa^2 = 1000$ 时仅需 158 次迭代，减少了约 18 倍。
 
@@ -635,12 +653,14 @@ FA 求解器的精度随波数 $k^2$ 和网格大小 $n$ 的变化关系。
 
 本实验验证非齐次 Dirichlet 边界条件下各求解器的正确性，
 重点验证 A1 bug（$\sigma \neq 0$ 时 $F \pm=bc/h^2$ 符号）修复后的正确性。
-取精确解 $u(x,y) = \sin(2\pi x)\sin(3\pi y) + 1$（边界值非零），
+取精确解 $u(x,y) = \sin(2\pi x)\sin(3\pi y) + 1$（边界值 $g_D = 1$，非零），
 对应的右端项为
 \begin{equation}
-  f(x,y) = \bigl((2\pi)^2 + (3\pi)^2 + \sigma\bigr) u(x,y),
+  f(x,y) = \bigl((2\pi)^2 + (3\pi)^2 + \sigma\bigr)\sin(2\pi x)\sin(3\pi y) + \sigma
 \end{equation}
-边界值由精确解在网格边界上给出。
+其中常数 $1$ 的 Laplacian 为零，因此 $\sigma$ 仅通过 $\sigma \cdot 1$ 项进入右端项，
+而不能写成 $f = ((2\pi)^2+(3\pi)^2+\sigma)\,u(x,y)$。
+在边界 $\partial\Omega$ 上，$\sin(2\pi x)\sin(3\pi y) = 0$，故 $g_D(x,y) = u\big|_{\partial\Omega} = 1$。
 
 图~\ref{fig:nonhom_bc} 展示了各求解器在不同 $\sigma$ 参数下的误差收敛曲线。
 实验结果证实：A1 bug 修复后，非齐次 Dirichlet 边界条件处理完全正确；
@@ -677,8 +697,8 @@ $\sigma$ & 方程类型 & \multicolumn{2}{c}{FA / CR / FACR} & \multicolumn{2}{c
 % ===== 实验十五 =====
 \subsection{实验十五：Modified Helmholtz 与 True Helmholtz 的谱对比}\label{sec:exp15_mod_vs_true}
 
-本实验对比 $\nabla^2 u - \sigma u = f$（Modified Helmholtz，$\sigma > 0$）
-与 $\nabla^2 u + k^2 u = f$（True Helmholtz，$\sigma = -k^2 < 0$）
+本实验对比 $(-\nabla^2 + \sigma)u = f$（$\sigma > 0$，Modified Helmholtz）
+与 $(-\nabla^2 - \kappa^2)u = f$（$\sigma = -\kappa^2 < 0$，True Helmholtz）
 的谱性质差异。通过 \texttt{compute\_spectral\_indicators} 计算频域分母的最小值
 （$\text{min\_denominator}$，记为 $d_{\min}$）和谱条件数指标，
 揭示两类方程数值求解的难度差异。
@@ -698,9 +718,10 @@ Modified Helmholtz 的 $d_{\min}$ 随 $\sigma$ 增大而增大，
 \end{figure}
 
 图~\ref{fig:exp04_gmres} 展示了 GMRES 迭代次数随 $\sigma$ 的变化。
-FFT9 作为直接谱方法，对本文所用的三角多项式右端项可在 1 次迭代内精确求解；
-二阶格式（FA/CR/FACR）通过 GMRES 迭代求解，迭代次数随条件数恶化而缓慢增长，
-True Helmholtz 的迭代次数整体高于同量级 $|\sigma|$ 的 Modified Helmholtz。
+表中 GMRES 迭代次数均较小，这是因为该实验右端项主要激发少数 Fourier 模态
+（$f = \sin(2\pi x)\sin(3\pi y)$），Krylov 子空间可以在低维内捕获解分量。
+因此本节不以该迭代次数判断一般 RHS 下的 GMRES 收敛难度，
+而仅将其作为辅助记录，重点在于谱指标 $d_{\min}$ 和条件数指标的对比。
 
 \begin{figure}[htbp]
 \centering
@@ -713,6 +734,12 @@ True Helmholtz 的迭代次数整体高于同量级 $|\sigma|$ 的 Modified Helm
 Modified Helmholtz 的 $d_{\min}$ 恒正且随 $\sigma$ 增大，
 不会出现共振；True Helmholtz 当 $d_{\min} \approx 0$ 时发生共振，
 对应离散特征值与连续问题特征值重合的特殊网格参数。
+本文通过频域分母 $d_{p,q}=\lambda_{p,q}-\kappa^2$ 分析指出 true Helmholtz
+在 $\kappa^2$ 接近离散 Laplacian 特征值时存在近共振风险。
+当前实验仅展示 modified 与 true Helmholtz 在远离共振区域时的谱指标差异，
+未系统扫描 near-resonance 区域。
+因此，near-resonance 下解范数放大和 Krylov 迭代困难在本文中作为理论分析，
+实验验证留作后续工作。
 
 \begin{table}[htbp]
 \centering

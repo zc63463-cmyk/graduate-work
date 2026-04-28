@@ -45,8 +45,13 @@
   \item \textbf{GMRES 迭代法对比}：实现了基于 Givens 旋转的 GMRES(m) 算法，
         构造了二维 Helmholtz 方程的五点差分稀疏矩阵，
         在相同测试问题下与 FFT 直接法进行了系统的精度、效率和收敛性对比。
-        实验揭示了 modified Helmholtz 下迭代次数随 $\kappa^2$ 增大而减少、
-        true Helmholtz 下近共振时迭代次数急剧增加的相反趋势。
+        对 modified Helmholtz 方程 $\sigma=+\kappa^2$，
+        $\kappa^2$ 增大使频域分母远离零并改善条件数，
+        因此无预处理 GMRES 迭代次数减少。
+        对 true Helmholtz 方程 $\sigma=-\kappa^2$，
+        近共振区域的迭代困难在本文中作为理论分析，
+        实验验证留作后续工作。
+        该结论不适用于 true Helmholtz 方程。
 \end{enumerate}
 
 \subsection{主要结论}
@@ -68,8 +73,10 @@
                 FFT 直接法求解无条件稳定。
           \item True Helmholtz（$\sigma=-\kappa^2$）：
                 当 $\kappa^2$ 接近某特征值时出现共振，
-                频域除数接近零，解范数和迭代次数急剧增大；
-                需使用 MINRES/GMRES 配合 shifted-Laplacian 预处理。
+                频域除数接近零，解范数急剧增大；
+                本文通过频域分母分析指出了近共振风险，
+                但尚未通过数值实验系统扫描 near-resonance 区域；
+                实际应用中需使用 MINRES/GMRES 配合 shifted-Laplacian 预处理。
         \end{itemize}
         因此，不能笼统地说"波数增大导致求解困难"，
         必须区分 modified 与 true Helmholtz 两类方程。
@@ -108,6 +115,10 @@
 
   \item \textbf{形式化验证}：本文对六阶不可行定理进行了 Lean 4 形式化验证，
         这是将交互式定理证明器应用于数值分析领域的一次尝试。
+        Lean 4 在本文中仅用于验证六阶不可行性证明中的代数核心步骤，
+        包括 $c_2=0$ 推出的参数约束，以及两个 Fourier 模式下 $c_4=0$ 条件之间的矛盾。
+        该形式化验证不覆盖完整 PDE 全局误差估计、DST/DCT 谱理论证明，
+        也不验证程序实现正确性。
         未来可以将形式化验证扩展到更广泛的差分格式理论，
         如稳定性分析（Lax 等价定理）、收敛阶估计等，
         为数值算法的可靠性提供机器可验证的数学保证。

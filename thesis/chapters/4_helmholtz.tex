@@ -43,11 +43,14 @@
 其中 $\mu_p = 2-2\cos(p\pi/(N+1))$（Dirichlet），
 $\mu_k = 2-2\cos(k\pi/(n-1))$（Neumann）。
 
-对于九点紧致差分格式（FFT9），频域分母统一为：
+对于九点紧致差分格式（FFT9），原始频域分母统一为：
 \begin{equation}
-  D_{p,q}^{(9)} = -\frac{\hat{\lambda}_L(p,q)}{\hat{\lambda}_R(p,q)} + \sigma
+  D_{p,q}^{\mathrm{raw}} = -\hat{\lambda}_L(p,q) + \sigma\,\hat{\lambda}_R(p,q)
   \label{eq:denom_fft9_unified}
 \end{equation}
+等价的有效频域分母形式为 $D_{p,q}^{(9)}=-\hat{\lambda}_L/\hat{\lambda}_R+\sigma$，
+两者在数学上等价，但原始形式 $D^{\mathrm{raw}}$ 与物理空间右端项 $R_h f$ 的变换结果 $\hat{\tilde{g}}=\hat{\Lambda}_R\hat{f}$ 直接匹配，
+避免了非齐次边界条件下 $R_h$ 算子与有效除数形式之间的混淆（详见第~\ref{sec:fft}章）。
 
 因此，所有 FFT 直接法推广到 Helmholtz 方程仅需将频域除数从
 $\lambda_{p,q}$ 改为 $\lambda_{p,q}+\sigma$，无需修改变换和回代步骤。
@@ -111,13 +114,13 @@ $\kappa^2$ 的加入对迭代法是"帮助"而非"阻碍"。
 
 \subsubsection{FFT9 格式}
 
-对于九点紧致格式，modified Helmholtz 的频域除数为：
+对于九点紧致格式，modified Helmholtz 的原始频域除数为：
 \begin{equation}
-  D_{p,q}^{(9)} = -\frac{\hat{\lambda}_L}{\hat{\lambda}_R} + \kappa^2
+  D_{p,q}^{\mathrm{raw}} = -\hat{\lambda}_L + \kappa^2\,\hat{\lambda}_R
 \end{equation}
 因 $-\hat{\lambda}_L > 0$（$L_h \approx \Delta$，$\hat{\lambda}_L < 0$）
-且 $\hat{\lambda}_R > 0$，故 $-\hat{\lambda}_L/\hat{\lambda}_R > 0$，
-分母 $D_{p,q}^{(9)} > \kappa^2 > 0$ 恒成立，FFT9 求解无条件稳定。
+且 $\hat{\lambda}_R > 0$，故 $D_{p,q}^{\mathrm{raw}} > 0$ 恒成立，
+FFT9 求解无条件稳定。
 
 \subsection{True Helmholtz 方程（$\sigma = -\kappa^2$）}
 

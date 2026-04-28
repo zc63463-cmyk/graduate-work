@@ -36,25 +36,26 @@ def _make_nonhom_problem(k2=0.0, sigma=None, sx=1.0, sy=1.0):
     """
     Non-homogeneous Dirichlet test problem.
 
-    u(x,y) = sin(2*pi*x/sx) * sin(3*pi*y/sy)
-    f(x,y) = ((2*pi/sx)^2 + (3*pi/sy)^2 + sigma) * u(x,y)
-    BC: u|_{dO} = sin(2*pi*x/sx) * sin(3*pi*y/sy)  (non-zero on boundary)
+    u(x,y) = sin(2*pi*x/sx) * sin(3*pi*y/sy) + 1
+    f(x,y) = ((2*pi/sx)^2 + (3*pi/sy)^2 + sigma) * sin(2*pi*x/sx) * sin(3*pi*y/sy) + sigma
+    BC: u|_{dO} = 1  (non-zero on ALL boundary nodes)
 
-    The sine product is NOT zero on boundaries (except corners),
-    so this tests the non-homogeneous BC handling.
+    The constant shift +1 ensures g_D = 1 on all boundaries,
+    making this a genuine non-homogeneous Dirichlet problem.
+    Note: Laplacian of the constant 1 is zero, so f != ((2π)²+(3π)²+σ)·u.
     """
     if sigma is None:
         sigma = k2  # backward compat
 
     def u_exact(x, y):
-        return np.sin(2 * np.pi * x / sx) * np.sin(3 * np.pi * y / sy)
+        return np.sin(2 * np.pi * x / sx) * np.sin(3 * np.pi * y / sy) + 1.0
 
     def f_rhs(x, y):
         lam = (2 * np.pi / sx)**2 + (3 * np.pi / sy)**2
-        return (lam + sigma) * np.sin(2 * np.pi * x / sx) * np.sin(3 * np.pi * y / sy)
+        return (lam + sigma) * np.sin(2 * np.pi * x / sx) * np.sin(3 * np.pi * y / sy) + sigma
 
     def bc(x, y):
-        return u_exact(x, y)
+        return 1.0  # u|∂Ω = sin(2πx)sin(3πy) + 1 = 0 + 1 = 1
 
     return u_exact, f_rhs, bc
 

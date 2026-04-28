@@ -41,9 +41,9 @@ def test_problem_dirichlet(sigma, sx=1.0, sy=1.0):
 
 
 def test_problem_dirichlet_mode(sigma, m=2, n=3, sx=1.0, sy=1.0):
-    """Non-homogeneous Dirichlet: u = sin(mπx/sx) sin(nπy/sy).
+    """Dirichlet with mode (m,n): u = sin(mπx/sx) sin(nπy/sy).
     f = ((mπ/sx)² + (nπ/sy)² + σ) u
-    BC is non-zero (good for verifying A1 bug fix).
+    BC is zero when m,n are integers (homogeneous Dirichlet on [0,sx]×[0,sy]).
     """
     def u_exact(x, y):
         return np.sin(m * np.pi * x / sx) * np.sin(n * np.pi * y / sy)
@@ -52,6 +52,29 @@ def test_problem_dirichlet_mode(sigma, m=2, n=3, sx=1.0, sy=1.0):
                np.sin(m * np.pi * x / sx) * np.sin(n * np.pi * y / sy)
     def bc(x, y):
         return u_exact(x, y)
+    return u_exact, f_rhs, bc
+
+
+def test_problem_nonhom_dirichlet(sigma, m=2, n=3, sx=1.0, sy=1.0):
+    """Non-homogeneous Dirichlet: u = sin(mπx/sx) sin(nπy/sy) + 1.
+    
+    The constant shift +1 makes boundary values non-zero: g_D = 1 on ∂Ω.
+    
+    PDE: (-Δ + σ)u = f, where:
+      f = ((mπ/sx)² + (nπ/sy)² + σ) sin(mπx/sx) sin(nπy/sy) + σ
+    
+    Note: The Laplacian of the constant 1 is zero, so f ≠ ((mπ/sx)² + (nπ/sy)² + σ) * u.
+    Only the σ·1 term contributes to f from the constant part.
+    
+    Good for verifying non-homogeneous Dirichlet boundary correction (A1 bug fix).
+    """
+    def u_exact(x, y):
+        return np.sin(m * np.pi * x / sx) * np.sin(n * np.pi * y / sy) + 1.0
+    def f_rhs(x, y):
+        return ((m * np.pi / sx)**2 + (n * np.pi / sy)**2 + sigma) * \
+               np.sin(m * np.pi * x / sx) * np.sin(n * np.pi * y / sy) + sigma
+    def bc(x, y):
+        return 1.0  # u|∂Ω = sin(mπx/sx)sin(nπy/sy) + 1 = 0 + 1 = 1
     return u_exact, f_rhs, bc
 
 

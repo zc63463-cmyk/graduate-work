@@ -2,8 +2,11 @@
 """Experiment 02: Non-Homogeneous Dirichlet BC — A1 Bug Fix Verification
 
 Verify that the F += bc/h² sign fix works correctly for non-zero BC.
-Test function: u = sin(2πx)sin(3πy) with non-zero boundary values.
+Test function: u = sin(2πx)sin(3πy) + 1  (boundary value = 1, non-zero!)
 Four σ tracks: 0, +10, +100, -5.
+
+RHS: f = ((2π)² + (3π)² + σ) sin(2πx)sin(3πy) + σ
+Note: constant 1 has zero Laplacian, so f ≠ ((2π)²+(3π)²+σ)·u.
 """
 
 import numpy as np
@@ -17,7 +20,7 @@ sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), '..'
 from helmholtz_solver import fa_helmholtz, cr_helmholtz, facr_helmholtz, fft9_helmholtz
 from .utils import (
     get_results_dir, get_figures_dir,
-    test_problem_dirichlet_mode,
+    test_problem_nonhom_dirichlet,
     compute_convergence_rate, equation_type
 )
 
@@ -35,11 +38,11 @@ def run():
 
     for sigma in sigmas:
         eq_type = equation_type(sigma)
-        # u = sin(2πx)sin(3πy) — non-zero on boundary
-        u_exact, f_rhs, bc = test_problem_dirichlet_mode(sigma, m=2, n=3, sx=sx, sy=sy)
+        # u = sin(2πx)sin(3πy) + 1 — boundary value = 1 (non-zero!)
+        u_exact, f_rhs, bc = test_problem_nonhom_dirichlet(sigma, m=2, n=3, sx=sx, sy=sy)
 
         print(f"\n{'='*70}")
-        print(f"σ = {sigma:+.1f}  ({eq_type})  u = sin(2πx)sin(3πy)")
+        print(f"σ = {sigma:+.1f}  ({eq_type})  u = sin(2πx)sin(3πy) + 1")
         print(f"{'='*70}")
 
         for method in methods:

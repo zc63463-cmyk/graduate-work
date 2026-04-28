@@ -162,7 +162,7 @@ $N = n-2$ 为内节点数。
     = \frac{4}{\pi^2 h^2} = O(h^{-2})
     \label{eq:condition_number}
   \end{equation}
-  其中 $\lambda_{\min} = d_{1,1} \sim 4\pi^2/h^2 \cdot (1-O(h^2))$，
+  其中 $\lambda_{\min} = d_{1,1} \sim 2\pi^2$（leading-order 渐近，精确值为 $8\sin^2(\pi h/2)/h^2$），
   $\lambda_{\max} = d_{N,N} \sim 8/h^2$。
   条件数随网格加密以 $O(h^{-2})$ 增长，这是椭圆型方程差分离散的一般规律。
 
@@ -546,6 +546,11 @@ $R_h(-\nabla^2 u)$ 中的 $O(h^2)$ 误差为 $-\frac{h^2}{12}\nabla^4 u$，
   两种情形的论证路径一致：先由 $c_2 = 0$ 推出 $\alpha = -\gamma$
   （$\sigma \neq 0$ 时还要求 $\beta = \gamma$），
   再由 $c_4$ 的模态依赖性得出矛盾。
+  具体地，对 $\sigma \neq 0$，代入 $\alpha=-\gamma$, $\beta=\gamma$ 后，
+  取两个 Fourier 模式 $(\xi,\eta)=(1,0)$ 与 $(1,1)$，
+  $c_4=0$ 给出两个互不相容的 $\gamma$ 条件，
+  因此不存在统一常数使所有模式 $c_4$ 同时为零。
+  该代数矛盾由 Lean 4 定理 \texttt{helmholtz\_no\_sixth\_order\_real} 辅助验证。
   因此，四阶是九点紧致差分格式的自然精度上限。
 
   下面对情形二给出更精细的矛盾展示。令 $c_4$ 的分子为：
@@ -590,9 +595,11 @@ $R_h(-\nabla^2 u)$ 中的 $O(h^2)$ 误差为 $-\frac{h^2}{12}\nabla^4 u$，
 未知数仅在内节点 $(i,j)$，$i,j = 1, \ldots, n-2$ 上取值。
 边界贡献从右端项中消去：
 \begin{equation}
-  \tilde{f}_{i,j} = f_{i,j} - \frac{1}{h^2}(g_{0,j}\delta_{i,1} + g_{n-1,j}\delta_{i,n-2}
+  \tilde{f}_{i,j} = f_{i,j} + \frac{1}{h^2}(g_{0,j}\delta_{i,1} + g_{n-1,j}\delta_{i,n-2}
   + g_{i,0}\delta_{j,1} + g_{i,n-1}\delta_{j,n-2})
+  \label{eq:nonhom_dirichlet_rhs}
 \end{equation}
+其中边界值在差分格式中以 $-g/h^2$ 出现在左端，移至右端后取加号。
 
 对于非齐次 Dirichlet 边界条件，边界值直接赋给边界节点，
 内节点方程中的边界贡献移至右端项。

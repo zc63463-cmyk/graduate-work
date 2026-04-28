@@ -1000,7 +1000,11 @@ def fft9_helmholtz(n, f_func, bc_func, k2=None, bc_type='dirichlet',
 
     if bc_x == 'N' or bc_y == 'N':
         # FFT9 with Neumann BC requires special treatment of the compact
-        # stencil at boundaries. Fall back to FA solver for now.
+        # stencil at boundaries. Fall back to FA solver with a warning.
+        warnings.warn(
+            "FFT9 fourth-order compact solver currently supports Dirichlet BC only; "
+            "falling back to second-order FA solver for non-Dirichlet BC.",
+            RuntimeWarning)
         return fa_helmholtz(n, f_func, bc_func, sigma=sigma, bc_type=bc_type, sx=sx, sy=sy)
 
     x = np.linspace(0, sx, n)
@@ -1085,6 +1089,10 @@ def fft9_oer_helmholtz(n, f_func, bc_func, k2=None, bc_type='dirichlet', sx=1.0,
     bc_x, bc_y = _normalize_bc_type(bc_type)
 
     if bc_x == 'N' or bc_y == 'N':
+        warnings.warn(
+            "FFT9 OER fourth-order compact solver currently supports Dirichlet BC only; "
+            "falling back to second-order FA solver for non-Dirichlet BC.",
+            RuntimeWarning)
         return fa_helmholtz(n, f_func, bc_func, sigma=sigma, bc_type=bc_type, sx=sx, sy=sy)
 
     x = np.linspace(0, sx, n)
@@ -1679,9 +1687,10 @@ def test_mixed_bc():
 def test_nonhomogeneous_dirichlet():
     """Test non-homogeneous Dirichlet BC — validates the F += bc/h² sign fix.
 
-    Uses u(x,y) = sin(2*pi*x) * sin(3*pi*y) which has non-zero BC values.
-    f(x,y) = ((2*pi)^2 + (3*pi)^2 + k^2) * sin(2*pi*x) * sin(3*pi*y)
-    BC: u|_{dO} = sin(2*pi*x) * sin(3*pi*y)  (non-homogeneous)
+    Uses u(x,y) = sin(2*pi*x) * sin(3*pi*y) + 1  (boundary value = 1, non-zero!)
+    f(x,y) = ((2*pi)^2 + (3*pi)^2 + k^2) * sin(2*pi*x) * sin(3*pi*y) + k^2
+    Note: constant 1 has zero Laplacian, so f != ((2π)²+(3π)²+k²)·u.
+    BC: u|_{dO} = 1  (non-homogeneous)
     """
     print("\n" + "=" * 80)
     print("NON-HOMOGENEOUS DIRICHLET BC TEST (Sign Bug Verification)")
@@ -1691,14 +1700,14 @@ def test_nonhomogeneous_dirichlet():
         print(f"\n--- k^2 = {k2} ---")
 
         def u_exact(x, y):
-            return np.sin(2 * np.pi * x) * np.sin(3 * np.pi * y)
+            return np.sin(2 * np.pi * x) * np.sin(3 * np.pi * y) + 1.0
 
         def f_rhs(x, y):
             return ((2 * np.pi)**2 + (3 * np.pi)**2 + k2) * \
-                   np.sin(2 * np.pi * x) * np.sin(3 * np.pi * y)
+                   np.sin(2 * np.pi * x) * np.sin(3 * np.pi * y) + k2
 
         def bc(x, y):
-            return u_exact(x, y)
+            return 1.0  # u|∂Ω = sin(2πx)sin(3πy) + 1 = 0 + 1 = 1
 
         ns = [9, 17, 33, 65]
         prev_errors = {}
