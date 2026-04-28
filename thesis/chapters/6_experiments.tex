@@ -753,7 +753,7 @@ Modified Helmholtz 的 $d_{\min}$ 随 $\sigma$ 增大而增大，
 \label{fig:exp04_gmres}
 \end{figure}
 
-表~\ref{tab:exp15_mod_vs_true} 定量列出了 $n=65$ 时各 $\sigma$ 对应的谱指标与 GMRES 迭代次数。
+表~\ref{tab:exp15_mod_vs_true} 定量列出了 $n=33$ 时各 $\sigma$ 对应的谱指标与 GMRES 迭代次数。
 Modified Helmholtz 的 $d_{\min}$ 恒正且随 $\sigma$ 增大，
 不会出现共振；True Helmholtz 当 $d_{\min} \approx 0$ 时发生共振，
 对应离散特征值与连续问题特征值重合的特殊网格参数。
@@ -775,9 +775,11 @@ Modified Helmholtz 的 $d_{\min}$ 恒正且随 $\sigma$ 增大，
 图~\ref{fig:exp05_resonance} 展示了近共振扫描结果：
 当 $|\delta|$ 减小时，最小频域分母 $d_{\min}$ 同步下降，
 解范数 $\|u\|_\infty$ 出现放大，
-GMRES 迭代次数增加或残差收敛变慢。
+无预处理 GMRES 在所有近共振参数下均未能在 1001 次迭代内收敛。
 这与频域表达 $\hat{u}_{p,q} = \hat{f}_{p,q}/(\lambda_{p,q}^h + \sigma)$ 完全一致——
 当分母趋零时，对应模态的解分量被放大，线性系统变病态。
+值得注意的是，FFT 直接法（FA）在所有近共振参数下仍能正确求解，
+但解范数随 $d_{\min}$ 减小而放大，体现了共振的物理含义。
 
 \begin{figure}[htbp]
 \centering
@@ -800,21 +802,23 @@ GMRES 迭代次数增加或残差收敛变慢。
 \toprule
 $\sigma$ & 方程类型 & $d_{\min}$ & 谱条件数指标 & GMRES 迭代 & 状态 \\
 \midrule
-1    & Modified & 20.72 & $1.58\times10^3$ & 256 & 收敛 \\
-10   & Modified & 29.72 & $1.10\times10^3$ & 203 & 收敛 \\
-100  & Modified & 119.72 & $2.74\times10^2$ & 91 & 收敛 \\
+1    & Modified & 20.72 & $3.94\times10^2$ & 256 & 收敛 \\
+10   & Modified & 29.72 & $2.75\times10^2$ & 203 & 收敛 \\
+100  & Modified & 119.72 & $6.91\times10^1$ & 91 & 收敛 \\
 \midrule
--1   & True     & 18.72 & $1.75\times10^3$ & 270 & 收敛 \\
--5   & True     & 14.72 & $2.22\times10^3$ & 319 & 收敛 \\
--10  & True     & 9.72  & $3.36\times10^3$ & 428 & 收敛 \\
+-1   & True     & 18.72 & $4.36\times10^2$ & 270 & 收敛 \\
+-5   & True     & 14.72 & $5.55\times10^2$ & 319 & 收敛 \\
+-10  & True     & 9.72  & $8.39\times10^2$ & 428 & 收敛 \\
 \midrule
--50  & True     & 0.79  & $\gg 10^4$ & $>500$ & 近共振 \\
+-50  & True     & 0.79  & $1.03\times10^4$ & $>500$ & 近共振 \\
 \bottomrule
 \end{tabular}
 \begin{flushleft}
 \footnotesize 注：GMRES 使用 Gaussian 型非特征右端项，restart=30，tol=$10^{-10}$（绝对残差）；
-"近共振"行 $\sigma=-50$ 接近离散特征值 $\lambda_{1,2}^h\approx 49.3$，GMRES 在 500 次迭代内未收敛；
+"近共振"行 $\sigma=-50$ 接近离散特征值 $\lambda_{2,1}^h\approx 49.3$，GMRES 在 500 次迭代内未收敛；
 Modified H. 的 $\sigma$ 增大时条件数改善，迭代减少；True H. 的 $|\sigma|$ 增大时条件数恶化，迭代增加。
+更大网格 $n=65$（$\mathrm{dof}=3969$）时无预处理 GMRES 对 $\sigma \le 10$ 均不收敛（501 次），
+需预处理方可有效求解。
 \end{flushleft}
 \end{table}
 
