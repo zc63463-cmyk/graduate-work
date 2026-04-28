@@ -17,6 +17,7 @@ from helmholtz_solver import fa_helmholtz, cr_helmholtz, facr_helmholtz, fft9_he
 from .utils import (
     get_results_dir, get_figures_dir,
     test_problem_dirichlet, test_problem_dirichlet_mode,
+    test_problem_polynomial,
     compute_convergence_rate, equation_type
 )
 
@@ -28,13 +29,23 @@ def run():
     rows = []
 
     # Three tracks: Poisson, modified H., true H.
+    # Each track is (sigma, bc_type, bc_sub, problem_fn, rhs_type)
     tracks = [
-        (0.0,  'dirichlet', 'homogeneous', test_problem_dirichlet),
-        (10.0, 'dirichlet', 'homogeneous', test_problem_dirichlet),
+        (0.0,  'dirichlet', 'homogeneous', test_problem_dirichlet, 'eigenfunction'),
+        (10.0, 'dirichlet', 'homogeneous', test_problem_dirichlet, 'eigenfunction'),
         (-5.0, 'dirichlet', 'nonhom', lambda sigma, sx=1.0, sy=1.0:
-            test_problem_dirichlet_mode(sigma, m=2, n=3, sx=sx, sy=sy)),
+            test_problem_dirichlet_mode(sigma, m=2, n=3, sx=sx, sy=sy), 'eigenfunction'),
         # Note: true H. uses sin(2πx)sin(3πy) with λ_{2,3}=13π²≈128.3, σ=-5 is safe
     ]
+
+    # Additional track: polynomial manufactured solution (non-eigenfunction)
+    poly_tracks = [
+        (0.0,  'dirichlet', 'polynomial', test_problem_polynomial, 'polynomial'),
+        (10.0, 'dirichlet', 'polynomial', test_problem_polynomial, 'polynomial'),
+        (-5.0, 'dirichlet', 'polynomial', test_problem_polynomial, 'polynomial'),
+    ]
+
+    all_tracks = tracks + poly_tracks
 
     methods = [
         ('FA',   'fa',   lambda n, f, bc, **kw: fa_helmholtz(n, f, bc, **kw)),
@@ -46,7 +57,7 @@ def run():
     ns = [9, 17, 33, 65, 129]
     sx, sy = 1.0, 1.0
 
-    for sigma, bc_type, bc_sub, problem_fn in tracks:
+    for sigma, bc_type, bc_sub, problem_fn, rhs_type in all_tracks:
         eq_type = equation_type(sigma)
         u_exact, f_rhs, bc = problem_fn(sigma, sx, sy)
 
@@ -73,6 +84,7 @@ def run():
                     'method': method_name,
                     'sigma': sigma,
                     'equation_type': eq_type,
+                    'rhs_type': rhs_type,
                     'bc_subtype': bc_sub,
                     'n': n,
                     'h': sx / (n - 1),
@@ -115,9 +127,14 @@ def plot(df=None, figures_dir=None):
     sigmas = sorted(df['sigma'].unique())
     n_sigmas = len(sigmas)
 
+    # Determine if rhs_type column exists for sub-labeling
+    has_rhs_type = 'rhs_type' in df.columns
+
     fig, axes = plt.subplots(1, n_sigmas, figsize=(5 * n_sigmas, 5), squeeze=False)
     markers = {'FA': 'o', 'CR': 's', 'FACR': '^', 'FFT9': 'D'}
     colors  = {'FA': 'C0', 'CR': 'C1', 'FACR': 'C2', 'FFT9': 'C3'}
+    # Distinguish rhs_type by linestyle
+    linestyles = {'eigenfunction': '-', 'polynomial': '--'}
 
     for idx, sigma in enumerate(sigmas):
         ax = axes[0, idx]
@@ -125,10 +142,20 @@ def plot(df=None, figures_dir=None):
         eq_type = sub['equation_type'].iloc[0] if len(sub) > 0 else ''
 
         for method in sub['method'].unique():
-            md = sub[sub['method'] == method].sort_values('h')
-            if len(md) > 1:
-                ax.loglog(md['h'], md['error'], marker=markers.get(method, 'o'),
-                          label=method, color=colors.get(method, 'k'), linewidth=1.5)
+            md = sub[sub['method'] == method]
+            if has_rhs_type:
+                for rt in md['rhs_type'].unique():
+                    mdr = md[md['rhs_type'] == rt].sort_values('h')
+                    if len(mdr) > 1:
+                        label = f"{method}" + (f" ({rt[:3]})" if has_rhs_type and len(md['rhs_type'].unique()) > 1 else "")
+                        ax.loglog(mdr['h'], mdr['error'], marker=markers.get(method, 'o'),
+                                  label=label, color=colors.get(method, 'k'),
+                                  linestyle=linestyles.get(rt, '-'), linewidth=1.5)
+            else:
+                md = md.sort_values('h')
+                if len(md) > 1:
+                    ax.loglog(md['h'], md['error'], marker=markers.get(method, 'o'),
+                              label=method, color=colors.get(method, 'k'), linewidth=1.5)
 
         # Reference lines
         h_vals = sub['h'].sort_values().unique()
@@ -142,7 +169,7 @@ def plot(df=None, figures_dir=None):
         ax.set_xlabel('$h$')
         ax.set_ylabel('$\\|u - u_h\\|_\\infty$')
         ax.set_title(f'$\\sigma = {sigma:+.0f}$ ({eq_type})')
-        ax.legend(fontsize=8)
+        ax.legend(fontsize=7)
         ax.grid(True, alpha=0.3)
 
     plt.tight_layout()

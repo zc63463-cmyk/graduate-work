@@ -4,7 +4,8 @@
 Sub-experiments:
   (a) Pure Neumann modified H. (σ=+1, +10)
   (b) Mixed BC (N,D): u = cos(πx)sin(πy), σ=+10
-  (c) Pure Neumann Poisson (σ=0): compatibility condition + zero mean
+  (c) Pure Neumann Poisson (σ=0): compatibility condition + zero mean (trapezoid-weighted)
+  (d) Mixed BC (D,N): u = sin(πx)cos(πy), σ=+10  [smoke test]
 """
 
 import numpy as np
@@ -18,8 +19,8 @@ sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), '..'
 from helmholtz_solver import fa_helmholtz, cr_helmholtz, facr_helmholtz
 from .utils import (
     get_results_dir, get_figures_dir,
-    test_problem_neumann, test_problem_mixed_nd,
-    compute_convergence_rate, equation_type
+    test_problem_neumann, test_problem_mixed_nd, test_problem_mixed_dn,
+    compute_convergence_rate, equation_type, weighted_mean_full_grid
 )
 
 
@@ -135,7 +136,7 @@ def run():
 
     print(f"\n{'='*70}")
     print(f"Sub-exp (c): Pure Neumann Poisson  σ={sigma:.1f}  ({eq_type})")
-    print(f"  (compatibility condition + zero-mean check)")
+    print(f"  (compatibility condition + trapezoid-weighted zero-mean check)")
     print(f"{'='*70}")
 
     for method_name, solver_fn in [('FA', fa_helmholtz), ('CR', cr_helmholtz),
@@ -149,8 +150,8 @@ def run():
             try:
                 U = solver_fn(n, f_rhs, bc, sigma=sigma, bc_type='neumann', sx=sx, sy=sy)
                 # For Neumann Poisson, solution has arbitrary constant offset.
-                # Compute error after removing mean difference.
-                mean_diff = np.mean(U - Ue)
+                # Use trapezoid-weighted mean (consistent with DCT-I orthogonality).
+                mean_diff = weighted_mean_full_grid(U - Ue, sx, sy)
                 err = np.max(np.abs(U - Ue - mean_diff))
                 zero_mean = abs(mean_diff)
             except Exception as e:
@@ -183,6 +184,55 @@ def run():
             e_str = f"{errors[i]:12.2e}" if not np.isnan(errors[i]) else "       NaN"
             m_str = f"{rows[-len(ns)+i].get('mean_offset', np.nan):12.2e}"
             print(f"  {n:5d} | {e_str} | {r_str} | {m_str}")
+
+    # ---- Sub-experiment (d): Mixed BC (D,N) smoke test ----
+    sigma = 10.0
+    eq_type = equation_type(sigma)
+    u_exact, f_rhs, bc = test_problem_mixed_dn(sigma, sx, sy)
+
+    print(f"\n{'='*70}")
+    print(f"Sub-exp (d): Mixed (D,N)  σ={sigma:+.1f}  ({eq_type})")
+    print(f"  (smoke test: x=Dirichlet, y=Neumann)")
+    print(f"{'='*70}")
+
+    for method_name, solver_fn in [('FA', fa_helmholtz), ('CR', cr_helmholtz),
+                                     ('FACR', facr_helmholtz)]:
+        errors = []
+        for n in ns:
+            x = np.linspace(0, sx, n)
+            X, Y = np.meshgrid(x, x, indexing='ij')
+            Ue = u_exact(X, Y)
+
+            try:
+                U = solver_fn(n, f_rhs, bc, sigma=sigma, bc_type=('D', 'N'), sx=sx, sy=sy)
+                err = np.max(np.abs(U - Ue))
+            except Exception as e:
+                print(f"  {method_name:>5s} n={n:3d}: ERROR {e}")
+                err = np.nan
+
+            errors.append(err)
+            rows.append({
+                'method': method_name,
+                'sigma': sigma,
+                'equation_type': eq_type,
+                'bc_type': 'D,N',
+                'sub_exp': 'd_mixed_DN',
+                'n': n,
+                'h': sx / (n - 1),
+                'error': err,
+            })
+
+        rates = compute_convergence_rate(errors)
+        for i in range(len(ns)):
+            rows[-len(ns) + i]['rate'] = rates[i]
+
+        print(f"\n  {method_name}:")
+        print(f"  {'n':>5s} | {'error':>12s} | {'rate':>6s}")
+        print(f"  {'-'*30}")
+        for i, n in enumerate(ns):
+            r_str = f"{rates[i]:6.2f}" if not np.isnan(rates[i]) else "   --"
+            e_str = f"{errors[i]:12.2e}" if not np.isnan(errors[i]) else "       NaN"
+            print(f"  {n:5d} | {e_str} | {r_str}")
 
     df = pd.DataFrame(rows)
     csv_path = os.path.join(results_dir, 'exp03_neumann_mixed.csv')

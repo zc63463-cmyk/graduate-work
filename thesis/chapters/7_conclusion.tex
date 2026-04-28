@@ -49,9 +49,7 @@
         $\kappa^2$ 增大使频域分母远离零并改善条件数，
         因此无预处理 GMRES 迭代次数减少。
         对 true Helmholtz 方程 $\sigma=-\kappa^2$，
-        近共振区域的迭代困难在本文中作为理论分析，
-        实验验证留作后续工作。
-        该结论不适用于 true Helmholtz 方程。
+        通过近共振扫描实验验证了频域分母趋零时解范数放大和迭代困难的现象。
 \end{enumerate}
 
 \subsection{主要结论}
@@ -74,8 +72,8 @@
           \item True Helmholtz（$\sigma=-\kappa^2$）：
                 当 $\kappa^2$ 接近某特征值时出现共振，
                 频域除数接近零，解范数急剧增大；
-                本文通过频域分母分析指出了近共振风险，
-                但尚未通过数值实验系统扫描 near-resonance 区域；
+                近共振扫描实验系统验证了 $|\delta|$ 减小时频域分母趋零、
+                解范数放大和 GMRES 迭代增加的行为；
                 实际应用中需使用 MINRES/GMRES 配合 shifted-Laplacian 预处理。
         \end{itemize}
         因此，不能笼统地说"波数增大导致求解困难"，

@@ -122,7 +122,8 @@ def test_problem_mixed_dn(sigma, sx=1.0, sy=1.0):
 
 def test_problem_polynomial(sigma, sx=1.0, sy=1.0):
     """Non-eigenfunction Dirichlet: u = x²(sx-x)² y²(sy-y)².
-    Good for GMRES convergence testing.
+    Good for GMRES convergence testing and convergence order verification
+    with a non-eigenfunction manufactured solution.
     """
     def u_exact(x, y):
         px = x**2 * (sx - x)**2
@@ -137,6 +138,71 @@ def test_problem_polynomial(sigma, sx=1.0, sy=1.0):
     def bc(x, y):
         return 0.0
     return u_exact, f_rhs, bc
+
+
+def test_problem_gaussian_rhs(sigma, sx=1.0, sy=1.0):
+    """Gaussian RHS (no closed-form exact solution).
+
+    f = exp(-80 * ((x-0.37*sx)² + (y-0.61*sy)²))
+    BC = 0 (homogeneous Dirichlet).
+
+    This RHS is NOT a Laplacian eigenfunction, so GMRES iterations
+    are representative of general RHS convergence behavior.
+    No exact solution is available; use for Krylov iteration study only.
+
+    Returns (None, f_rhs, bc) since u_exact is unavailable.
+    """
+    cx, cy = 0.37 * sx, 0.61 * sy
+    def f_rhs(x, y):
+        return np.exp(-80.0 * ((x - cx)**2 + (y - cy)**2))
+    def bc(x, y):
+        return 0.0
+    return None, f_rhs, bc
+
+
+# ============================================================================
+# Grid Integration Helpers (for Neumann Poisson zero-mean correction)
+# ============================================================================
+
+def trapezoid_weights(n):
+    """Trapezoidal integration weights for n-point uniform grid.
+
+    w[0] = w[-1] = 0.5, w[i] = 1 for i=1..n-2.
+
+    Consistent with DCT-I scaling convention: the endpoints are counted
+    with half weight to avoid double-counting in the composite trapezoid rule.
+    """
+    w = np.ones(n)
+    w[0] = 0.5
+    w[-1] = 0.5
+    return w
+
+
+def weighted_mean_full_grid(E, sx=1.0, sy=1.0):
+    """Compute trapezoid-weighted mean of a 2D array on a full grid.
+
+    For Neumann Poisson, the solution has an arbitrary constant offset.
+    The zero-mean correction should use trapezoidal integration weights
+    consistent with DCT-I orthogonality, not simple arithmetic mean.
+
+    Parameters
+    ----------
+    E : ndarray, shape (n, n)
+        Values on the full grid (including boundary).
+    sx, sy : float
+        Domain dimensions (for future generalization; currently unused
+        since uniform h spacing cancels out).
+
+    Returns
+    -------
+    float
+        Trapezoid-weighted mean value.
+    """
+    n = E.shape[0]
+    wx = trapezoid_weights(n)
+    wy = trapezoid_weights(n)
+    W = wx[:, None] * wy[None, :]
+    return np.sum(W * E) / np.sum(W)
 
 
 # ============================================================================
