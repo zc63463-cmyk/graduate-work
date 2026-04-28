@@ -152,8 +152,9 @@ def cr_solver(n, f_func, bc_func, sx=1.0, sy=1.0):
     Fh = np.zeros((N,N))
     for j in range(N): Fh[:,j] = dst(F_adj[:,j], type=1, norm='ortho')
     
-    # Per-mode eigenvalues of D_block = tridiag(-1,4,-1)
-    kv=np.arange(1,N+1); dp=4.0-2.0*np.cos(kv*np.pi/(N+1)); av=-1.0
+    # Per-mode eigenvalues of 1D Laplacian: B=tridiag(-1,2,-1)
+    # mu_p = 2 - 2*cos(p*pi/(N+1)), N=n-2 for Dirichlet
+    kv=np.arange(1,N+1); dp=2.0-2.0*np.cos(kv*np.pi/(N+1)); av=-1.0
     
     # Solve each mode's tridiagonal system
     Uh=np.zeros((N,N)); h2=h*h

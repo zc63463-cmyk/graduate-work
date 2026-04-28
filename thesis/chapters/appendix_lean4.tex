@@ -1,0 +1,89 @@
+% ============================================================
+% 附录：Lean 4 辅助形式化验证
+% ============================================================
+\section{Lean 4 辅助形式化验证}
+\label{app:lean4}
+
+本文利用 Lean 4 定理证明器对三参数九点修正族的六阶不可行性进行了辅助代数验证。
+验证目标聚焦于 Fourier 特征值分析中的关键代数步骤，而非完整 PDE 全局误差估计。
+
+\subsection{验证目标}
+
+考虑九点紧致差分格式的三参数修正族：
+\begin{equation}
+  (-L_h - \alpha h^2 L_h^{(5)})u + \sigma(R_h+\beta h^2 I)u = (R_h+\gamma h^2 I)f,
+\end{equation}
+其中 $L_h^{(5)}$ 为五点 Laplacian 算子。
+通过 Fourier 分析，该格式的有效特征值为：
+\begin{equation}
+  \hat{\lambda}_{\text{eff}} = \frac{-\hat{\lambda}_L + \sigma\hat{\lambda}_R}{\hat{\lambda}_R}
+  \cdot \frac{1 + \alpha h^2 \frac{\hat{\lambda}_5}{\hat{\lambda}_L}}{1 + \gamma h^2 \frac{1}{\hat{\lambda}_R}} + O(h^4),
+\end{equation}
+其中 $\hat{\lambda}_L$、$\hat{\lambda}_R$、$\hat{\lambda}_5$ 分别为 $L_h$、$R_h$、$L_h^{(5)}$ 的 Fourier symbol。
+
+六阶精度要求：对所有 Fourier 模式 $(p,q)$，$h^4$ 项系数 $c_4(p,q;\alpha,\beta,\gamma) = 0$。
+通过 $c_2 = 0$ 的一致性条件，可推出 $\alpha = -\gamma$（Poisson）或附加 $\beta = \gamma$（Helmholtz）。
+代入后，$c_4$ 对模式 $(p,q)$ 的显式表达式为：
+\begin{equation}
+  c_4(p,q;\gamma) = \text{mode-dependent polynomial in } \gamma,
+\end{equation}
+验证目标是证明：不存在统一的实数 $\gamma$ 使得所有模式同时满足 $c_4 = 0$。
+
+\subsection{验证定理与策略}
+
+表~\ref{tab:lean4_theorems} 列出了 Lean 4 中验证的核心定理。
+
+\begin{table}[htbp]
+\centering
+\caption{Lean 4 验证定理清单}
+\label{tab:lean4_theorems}
+\begin{tabular}{llll}
+\toprule
+\textbf{Lean 定理名} & \textbf{数学含义} & \textbf{证明策略} & \textbf{状态} \\
+\midrule
+\texttt{c4\_num\_mode\_10\_real} & $c_4(1,0,\gamma) = 60\gamma + 3$ & \texttt{ring} & ✅ 通过 \\
+\texttt{c4\_num\_mode\_11\_real} & $c_4(1,1,\gamma) = 120\gamma - 4$ & \texttt{ring} & ✅ 通过 \\
+\texttt{sixth\_order\_impossible\_real} & 不存在统一 $\gamma$ 使所有模式 $c_4=0$ & \texttt{ring} + \texttt{linarith} & ✅ 通过 \\
+\texttt{c2\_poisson\_forces\_neg\_gamma} & $c_2=0$ 推出 $\alpha = -\gamma$ & \texttt{linarith} & ✅ 通过 \\
+\texttt{poisson\_no\_sixth\_order\_real} & Poisson 三参数族不可达六阶 & \texttt{ring} + \texttt{linarith} & ✅ 通过 \\
+\texttt{c2\_helmholtz\_forces\_neg\_gamma} & Helmholtz 中 $c_2=0$ 亦推出 $\alpha=-\gamma$ & \texttt{linarith} & ✅ 通过 \\
+\texttt{helmholtz\_no\_sixth\_order\_real} & Helmholtz 三参数族不可达六阶 & \texttt{ring} + \texttt{linarith} & ✅ 通过 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{整数域版本}（`omega` 策略）：验证了 12 个定理，覆盖整数域上的系数恒等式。
+  \item \textbf{实数域版本}（`ring` + `linarith` 策略）：验证了 8 个定理，覆盖实数域上的多项式等式和线性不等式。
+\end{itemize}
+
+\subsection{验证范围与局限性}
+
+\textbf{已验证的内容}：
+\begin{enumerate}[itemsep=1pt]
+  \item $c_4$ 系数对具体模式 $(1,0)$ 和 $(1,1)$ 的显式表达式；
+  \item 两个模式的 $c_4$ 不可能同时为零（矛盾推导）；
+  \item $c_2 = 0$ 对所有模式推出 $\alpha = -\gamma$ 的代数正确性；
+  \item 统一路径（$c_2 \to \alpha=-\gamma \to c_4$ 矛盾）在 Poisson 和 Helmholtz 情形下的正确性。
+\end{enumerate}
+
+\textbf{未覆盖的内容}：
+\begin{enumerate}[itemsep=1pt]
+  \item 完整 PDE 截断误差的全局误差估计（需 Sobolev 空间理论）；
+  \item Fourier symbol 从离散求和到连续积分的收敛性证明；
+  \item DST-I 对角化矩阵的严格谱理论（特征值、特征向量的正交完备性）。
+\end{enumerate}
+
+\subsection{形式化验证工具链}
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Lean 版本}：leanprover/lean4:v4.29.1
+  \item \textbf{Mathlib 版本}：v4.29.1（预编译 olean）
+  \item \textbf{构建命令}：\texttt{lake build}
+  \item \textbf{验证状态}：\textbf{无 sorry / admit / axiom / unsafe}，全部定理通过编译
+\end{itemize}
+
+\begin{remark}
+  Lean 4 验证覆盖的是代数系数矛盾，为论文的解析推导提供了机器可检查的背书，
+  但不包含完整 PDE 全局误差估计或谱理论的严格形式化。
+\end{remark}

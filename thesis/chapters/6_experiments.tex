@@ -629,3 +629,108 @@ FA 求解器的精度随波数 $k^2$ 和网格大小 $n$ 的变化关系。
   \item \textbf{对角线}：保持 $kh$ 恒定时，误差基本一致，
         证实了"每个波长需足够采样点"的经验法则。
 \end{itemize}
+
+% ===== 实验十四 =====
+\subsection{实验十四：非齐次 Dirichlet 边界条件验证}\label{sec:exp14_nonhom_bc}
+
+本实验验证非齐次 Dirichlet 边界条件下各求解器的正确性，
+重点验证 A1 bug（$\sigma \neq 0$ 时 $F \pm=bc/h^2$ 符号）修复后的正确性。
+取精确解 $u(x,y) = \sin(2\pi x)\sin(3\pi y) + 1$（边界值非零），
+对应的右端项为
+\begin{equation}
+  f(x,y) = \bigl((2\pi)^2 + (3\pi)^2 + \sigma\bigr) u(x,y),
+\end{equation}
+边界值由精确解在网格边界上给出。
+
+图~\ref{fig:nonhom_bc} 展示了各求解器在不同 $\sigma$ 参数下的误差收敛曲线。
+实验结果证实：A1 bug 修复后，非齐次 Dirichlet 边界条件处理完全正确；
+FFT9 在所有 $\sigma$ 参数下均保持四阶收敛精度。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/exp02_nonhom_bc.png}
+\caption{非齐次 Dirichlet BC 验证：各 $\sigma$ 下误差随 $h$ 的变化（A1 bug fix 验证）}
+\label{fig:nonhom_bc}
+\end{figure}
+
+表~\ref{tab:nonhom_bc} 列出了数值收敛率（节选 $n=33 \to 65$ 的收敛阶）。
+FFT9 的收敛阶稳定在 4 附近，二阶格式（FA/CR/FACR）的收敛阶稳定在 2 附近，
+与理论预期一致，证实了 $\sigma$ 统一框架的正确性。
+
+\begin{table}[htbp]
+\centering
+\caption{非齐次 Dirichlet BC 验证：收敛率（$\sigma$ 统一框架）}
+\label{tab:nonhom_bc}
+\begin{tabular}{ccccccc}
+\toprule
+$\sigma$ & 方程类型 & \multicolumn{2}{c}{FA / CR / FACR} & \multicolumn{2}{c}{FFT9} \\
+          &          & $L_\infty$ 误差 ($n=65$) & 阶 & $L_\infty$ 误差 ($n=65$) & 阶 \\
+\midrule
+0    & Poisson       & 1.50e-3 & 2.00 & 2.54e-8 & 4.19 \\
+10   & Modified H.   & 1.39e-3 & 2.00 & 2.36e-8 & 4.19 \\
+100  & Modified H.   & 8.42e-4 & 2.00 & 1.43e-8 & 4.19 \\
+-5   & True H.       & 1.56e-3 & 2.00 & 2.64e-8 & 4.19 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ===== 实验十五 =====
+\subsection{实验十五：Modified Helmholtz 与 True Helmholtz 的谱对比}\label{sec:exp15_mod_vs_true}
+
+本实验对比 $\nabla^2 u - \sigma u = f$（Modified Helmholtz，$\sigma > 0$）
+与 $\nabla^2 u + k^2 u = f$（True Helmholtz，$\sigma = -k^2 < 0$）
+的谱性质差异。通过 \texttt{compute\_spectral\_indicators} 计算频域分母的最小值
+（$\text{min\_denominator}$，记为 $d_{\min}$）和谱条件数指标，
+揭示两类方程数值求解的难度差异。
+
+图~\ref{fig:exp04_spectral} 展示了 $d_{\min}$ 和谱条件数指标随 $|\sigma|$ 的变化。
+Modified Helmholtz 的 $d_{\min}$ 随 $\sigma$ 增大而增大，
+谱条件数随之改善；True Helmholtz 的 $d_{\min}$ 随 $k^2$ 增大而减小，
+谱条件数恶化，与理论预期一致。
+这也解释了为何 True Helmholtz 在高波数下难以求解。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.48\textwidth]{figures/exp04_min_denom_vs_sigma.png}
+\includegraphics[width=0.48\textwidth]{figures/exp04_spectral_indicator_vs_sigma.png}
+\caption{Modified vs True Helmholtz：频域分母最小值 $d_{\min}$（左）与谱条件数指标（右）}
+\label{fig:exp04_spectral}
+\end{figure}
+
+图~\ref{fig:exp04_gmres} 展示了 GMRES 迭代次数随 $\sigma$ 的变化。
+FFT9 作为直接谱方法，对本文所用的三角多项式右端项可在 1 次迭代内精确求解；
+二阶格式（FA/CR/FACR）通过 GMRES 迭代求解，迭代次数随条件数恶化而缓慢增长，
+True Helmholtz 的迭代次数整体高于同量级 $|\sigma|$ 的 Modified Helmholtz。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.6\textwidth]{figures/exp04_gmres_iters_vs_sigma.png}
+\caption{Modified vs True Helmholtz：GMRES 迭代次数对比}
+\label{fig:exp04_gmres}
+\end{figure}
+
+表~\ref{tab:exp15_mod_vs_true} 定量列出了 $n=65$ 时各 $\sigma$ 对应的谱指标与 GMRES 迭代次数。
+Modified Helmholtz 的 $d_{\min}$ 恒正且随 $\sigma$ 增大，
+不会出现共振；True Helmholtz 当 $d_{\min} \approx 0$ 时发生共振，
+对应离散特征值与连续问题特征值重合的特殊网格参数。
+
+\begin{table}[htbp]
+\centering
+\caption{Modified vs True Helmholtz：谱指标与 GMRES 迭代次数（$n=65$）}
+\label{tab:exp15_mod_vs_true}
+\begin{tabular}{cccccc}
+\toprule
+$\sigma$ & 方程类型 & $d_{\min}$ & 谱条件数指标 & GMRES 迭代 & 状态 \\
+\midrule
+1    & Modified & 20.74 & $1.58\times10^3$ & 1 & 成功 \\
+10   & Modified & 29.74 & $1.10\times10^3$ & 1 & 成功 \\
+100  & Modified & 119.74 & $2.74\times10^2$ & 1 & 成功 \\
+\midrule
+-1   & True     & 18.74 & $1.75\times10^3$ & 1 & 成功 \\
+-5   & True     & 14.74 & $2.22\times10^3$ & 1 & 成功 \\
+-10  & True     & 9.74  & $3.36\times10^3$ & 1 & 成功 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+

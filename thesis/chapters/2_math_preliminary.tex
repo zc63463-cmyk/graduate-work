@@ -104,9 +104,7 @@ $B$ 为 $(n-2) \times (n-2)$ 一维 Laplacian 矩阵：
 $N = n-2$ 为内节点数。
 采用分解~\eqref{eq:matrix_A_kron}的优势在于：
 一维特征值 $\mu_p = 2-2\cos(p\pi/(N+1))$ 简洁无歧义，
-二维特征值直接叠加为 $(\mu_p+\mu_q)/h^2+\sigma$，避免了
-将 $A$ 的对角块写成 $T=\mathrm{tridiag}(-1,4,-1)$ 时
-特征值 $\lambda_p=4-2\cos\theta_p$ 导致的 double counting 嫌疑。
+二维特征值直接叠加为 $(\mu_p+\mu_q)/h^2+\sigma$，避免了 double counting 问题。
 
 \subsubsection{特征值与特征向量的推导}
 
