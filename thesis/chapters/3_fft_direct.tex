@@ -163,11 +163,11 @@ FACR(l) 算法结合了 CR 和 FA 的优势。
   \end{enumerate}
   总计算量为 $C(l) = O(N^2 \log N) + O(l N^2) + O(N^2 (\log N - l)/2^l)$。
 
-  当 $l \approx \log_2(\log_2 N)$ 时，第三项趋于常数，\textbf{理论最优复杂度}
-  为 $O(N^2 \log\log N)$。
-  
-  \textbf{注意}：本文当前实现采用 DST + Thomas 算法的混合方案，
-  实际复杂度为
+  当 $l \approx \log_2(\log_2 N)$ 时，缩减后系统的第三项降为 $O(N^2)$ 量级；
+  经典 FACR 理论中的最优复杂度可达到 $O(N^2 \log\log N)$。
+
+  \textbf{注意}：本文当前 FACR-like 实现采用完整方向 DST + Thomas 算法的混合方案，
+  整体实际复杂度仍为
   \[
     O(N^2 \log N).
   \]

@@ -4,7 +4,7 @@
 **日期**：2026-04-29  
 **版本**：V2.3，实验章节删减收束与交付一致性清理版  
 **当前分支**：`revise-sigma-fft9-krylov`  
-**最终 PDF**：`thesis/main.pdf`，52 pages  
+**最终 PDF**：`thesis/main.pdf`，56 pages
 **最终状态**：READY TO SUBMIT
 
 ---
@@ -95,7 +95,7 @@ xelatex -interaction=nonstopmode main.tex
 结果：
 
 ```text
-Output written on main.pdf (52 pages).
+Output written on main.pdf (56 pages).
 0 LaTeX error
 0 undefined citation/reference
 0 multiply defined label
@@ -122,6 +122,15 @@ PDF 已用 `pdftoppm` 渲染第 6 章关键页和附录表 11 所在页目检：
 | 实验五：modified/true Helmholtz 谱指标与 Gaussian RHS 下 GMRES 行为 | `exp04_modified_vs_true.py` | `exp04_modified_vs_true.csv` | `exp04_min_denom_vs_sigma.png`, `exp04_spectral_indicator_vs_sigma.png`, `exp04_gmres_iters_vs_sigma.png` |
 | 实验六：true Helmholtz near-resonance 扫描 | `exp05_true_helmholtz_resonance.py` | `exp05_resonance.csv` | `exp05_resonance.png` |
 
+当前保留四张可视化补充图：
+
+- `exp02_temperature_field_comparison.png`：用于展示非齐次 Dirichlet 温度场空间结构，不替代收敛阶证据。
+- `exp05_denominator_heatmap.png`：用于展示 true Helmholtz 近共振分母模态分布，不构成新增实验。
+- `exp06_complex_manufactured_fields.png`：用于展示多模态 manufactured solution 的解析场、FA/FFT9 数值解与误差分布。
+- `exp06_complex_manufactured_convergence.png`：用于展示同一多模态补充问题中 FA 二阶与 FFT9 四阶收敛。
+
+这些补充图不改变第 6 章 6 个核心实验结构，不新增“实验七”。
+
 每个实验均补充或保留了结论边界：
 
 - 实验一证明离散 FFT-vs-sparse 一致性，不证明连续 PDE 收敛阶。
@@ -144,7 +153,7 @@ PDF 已用 `pdftoppm` 渲染第 6 章关键页和附录表 11 所在页目检：
 - GMRES 已限定为无预处理 Krylov 基线；true Helmholtz 近共振处改为“可能停滞或依赖参数/预处理”的保守表述。
 - 第 6 章所有实验改为 6 个核心闭环，并加入“不证明什么”的限制句。
 - Lean 附录表 11 改为固定在 `\textwidth` 内，移除 emoji glyph，避免 PDF 右侧越界。
-- README 已创建为最终交付包说明，记录 52 页 PDF、6 个核心实验、exp00-exp05 CSV 与 7 张核心 PNG。
+- README 已创建为最终交付包说明，记录 56 页 PDF、6 个核心实验、exp00-exp05 核心 CSV、7 张核心 PNG、1 个多模态补充 CSV 与 4 张可视化补充 PNG。
 
 ### 代码与数据
 

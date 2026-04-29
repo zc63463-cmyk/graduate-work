@@ -16,8 +16,10 @@
 其中 $L_h^{(5)}$ 为五点 Laplacian 算子。
 通过 Fourier 分析，该格式的有效特征值为：
 \begin{equation}
-  \hat{\lambda}_{\text{eff}} = \frac{-\hat{\lambda}_L + \sigma\hat{\lambda}_R}{\hat{\lambda}_R}
-  \cdot \frac{1 + \alpha h^2 \frac{\hat{\lambda}_5}{\hat{\lambda}_L}}{1 + \gamma h^2 \frac{1}{\hat{\lambda}_R}} + O(h^4),
+  \hat{\lambda}_{\text{eff}}
+  = \frac{-\hat{\lambda}_L - \alpha h^2\hat{\lambda}_5
+  + \sigma(\hat{\lambda}_R+\beta h^2)}
+  {\hat{\lambda}_R+\gamma h^2},
 \end{equation}
 其中 $\hat{\lambda}_L$、$\hat{\lambda}_R$、$\hat{\lambda}_5$ 分别为 $L_h$、$R_h$、$L_h^{(5)}$ 的 Fourier symbol。
 
@@ -55,8 +57,9 @@
 \end{table}
 
 \begin{itemize}[itemsep=2pt]
-  \item \textbf{整数域版本}（`omega` 策略）：验证了 12 个定理，覆盖整数域上的系数恒等式。
-  \item \textbf{实数域版本}（`ring` + `linarith` 策略）：验证了 8 个定理，覆盖实数域上的多项式等式和线性不等式。
+  \item \textbf{整数域版本}（`omega` 策略）：当前源码包含 14 个 theorem 声明，覆盖整数域上的系数恒等式和矛盾推导。
+  \item \textbf{实数域版本}（`ring` + `linarith` 策略）：当前源码包含 10 个 theorem 声明，覆盖实数域上的多项式等式和线性不等式。
+  \item 表~\ref{tab:lean4_theorems} 仅列出与论文命题直接对应的核心实数域定理。
 \end{itemize}
 
 \subsection{验证范围与局限性}
@@ -73,7 +76,8 @@
 \begin{enumerate}[itemsep=1pt]
   \item 完整 PDE 截断误差的全局误差估计（需 Sobolev 空间理论）；
   \item Fourier symbol 从离散求和到连续积分的收敛性证明；
-  \item DST-I 对角化矩阵的严格谱理论（特征值、特征向量的正交完备性）。
+  \item DST-I 对角化矩阵的严格谱理论（特征值、特征向量的正交完备性）；
+  \item Python 求解器和实验脚本的程序实现正确性。
 \end{enumerate}
 
 \subsection{形式化验证工具链}

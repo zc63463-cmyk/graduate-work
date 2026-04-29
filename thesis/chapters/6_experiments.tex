@@ -154,6 +154,52 @@ $-5$   & True H.     & $1.56\times10^{-3}$ & $2.00$ & $2.64\times10^{-8}$ / $4.1
 这验证了非齐次 Dirichlet 情形下右端项和边界修正的实现一致性，
 不涉及 Neumann 或混合边界的九点紧致格式推广。
 
+\paragraph{可视化补充}
+为直观展示非齐次 Dirichlet 条件下的温度场结构，
+图~\ref{fig:exp02_temperature_field_comparison} 给出解析温度场、FFT9 数值解以及误差分布。
+该图仅作为空间结构可视化，收敛阶结论仍由前述误差表和收敛曲线支撑。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.94\textwidth]{figures/exp02_temperature_field_comparison.png}
+\caption{非齐次 Dirichlet 条件下的解析温度场可视化补充：解析解、FFT9 数值解、误差分布与 $y=0.5$ 截线}
+\label{fig:exp02_temperature_field_comparison}
+\end{figure}
+
+\paragraph{多模态 manufactured solution 可视化补充}
+为进一步展示求解器对复杂空间结构的解析解重现能力，
+本文考虑一个由多个正弦模态叠加而成的 manufactured solution：
+\[
+u=\sin(\pi x)\sin(\pi y)
++0.5\sin(2\pi x)\sin(3\pi y)
++0.3\sin(5\pi x)\sin(4\pi y),
+\]
+并逐模态构造右端项，其中三个模态对应系数分别为
+$2\pi^2+\sigma$、$13\pi^2+\sigma$ 和 $41\pi^2+\sigma$。
+对应补充脚本 \texttt{exp06\_complex\_manufactured\_visualization.py}
+首先检查数值解与解析解的 full-grid 形状、零边界值、interior indexing 和绘图转置约定，
+再进行 $n=65$ 的 sanity check 以及 $n=33,65,129,257$ 的收敛阶验证。
+
+图~\ref{fig:exp06_complex_fields} 展示了解析场、FA 数值解、FFT9 数值解及相应误差分布。
+该图仅作为可视化补充，精度结论仍以对应 CSV 表格和图~\ref{fig:exp06_complex_convergence} 的收敛验证为主。
+结果表明，FA 对该复杂解保持二阶收敛，而 FFT9 保持四阶收敛，并能准确重现多模态空间结构。
+旧版 complex test problem 图中若出现 $O(1)$ 误差，更可能来自右端项构造、full/interior 网格比较或边界补齐错误，
+因此本文仅采用本轮经过 sanity check 与收敛阶验证的新图。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.96\textwidth]{figures/exp06_complex_manufactured_fields.png}
+\caption{多模态 manufactured solution 的可视化补充：解析场、FA 与 FFT9 数值解、误差分布和 $y=0.5$ 截线}
+\label{fig:exp06_complex_fields}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.82\textwidth]{figures/exp06_complex_manufactured_convergence.png}
+\caption{多模态 manufactured solution 的收敛验证补充：FA 保持二阶精度，FFT9 保持四阶精度}
+\label{fig:exp06_complex_convergence}
+\end{figure}
+
 \subsection{实验四：Neumann 与混合边界条件验证}
 
 本实验对应脚本 \texttt{exp03\_neumann\_mixed.py}。
@@ -215,7 +261,7 @@ $f=\exp(-80((x-0.37)^2+(y-0.61)^2))$，
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.68\textwidth]{figures/exp04_gmres_iters_vs_sigma.png}
-\caption{Gaussian RHS 下无预处理 GMRES 迭代次数对比}
+\caption{Gaussian RHS 下无预处理 GMRES 迭代次数对比；达到迭代上限的点表示未在给定容差内收敛的 capped marker}
 \label{fig:exp04_gmres}
 \end{figure}
 
@@ -285,8 +331,24 @@ $10^{-4}$ & $1.00\times10^{-4}$ & $1.32\times10^{3}$ & $1001$（未收敛） \\
 当 $\kappa^2$ 接近离散 Laplacian 特征值时，最小分母 $d_{\min}$ 下降，
 对应模态的解分量被放大，线性系统变得病态。
 无预处理 GMRES 在这些近共振参数下无法在给定迭代上限内收敛，
-说明 true Helmholtz 问题通常需要 shifted-Laplacian 等预处理技术。
+提示 near-resonance true Helmholtz 中无预处理 GMRES 可能停滞或达到迭代上限；
+实际大规模 true Helmholtz 求解通常需要考虑预处理技术，
+但本文未对具体预处理器进行实验比较。
 该结论仅针对 true Helmholtz 近共振扫描，不外推为一般波数性能比较。
+
+\paragraph{可视化补充}
+为解释 true Helmholtz 的近共振机制，
+图~\ref{fig:exp05_denominator_heatmap} 给出选定模态对 $(2,3)/(3,2)$ 附近的频域分母共振强度
+$-\log_{10}|d_{p,q}|$ 模态分布。
+该值越大表示分母越小、近共振越强；小分母模态对应解分量放大的主要来源。
+该图仅作为频域分母结构可视化，不改变前述近共振扫描的数据结论。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.78\textwidth]{figures/exp05_denominator_heatmap.png}
+\caption{True Helmholtz near-resonance denominator heatmap：选定模态对 $(2,3)/(3,2)$ 下的共振强度 $-\log_{10}|d_{p,q}|$ 分布，数值越大表示分母越小、近共振越强}
+\label{fig:exp05_denominator_heatmap}
+\end{figure}
 
 \subsection{实验总结}
 

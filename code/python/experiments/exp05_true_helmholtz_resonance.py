@@ -169,9 +169,11 @@ def run():
                                               max_iter=1000, tol=1e-10)
             gmres_iters = info['iterations']
             abs_res = info['residuals'][-1] if info['residuals'] else np.inf
+            gmres_success = info.get('success', False)
         except:
             gmres_iters = -1
             abs_res = np.inf
+            gmres_success = False
         
         rows.append({
             'n': n, 'n_interior': N, 'h': h,
@@ -186,7 +188,7 @@ def run():
             'solution_l2': sol_l2,
             'solution_linf': sol_linf,
             'gmres_iters': gmres_iters,
-            'gmres_success': True,
+            'gmres_success': gmres_success,
             'gmres_abs_residual': abs_res,
             'fa_time_ms': np.nan, 'gmres_time_ms': np.nan,
         })

@@ -23,11 +23,11 @@
 性质 & Poisson ($\sigma=0$) & modified H. ($\sigma=+\kappa^2$) & true H. ($\sigma=-\kappa^2$) \\
 \midrule
 矩阵对称性 & 对称 & 对称 & 对称 \\
-正定性 & 正定 & 正定 & 不定 \\
+正定性 & 正定 & 正定 & 依谱而定 \\
 频域分母 & $\lambda_{p,q}$ & $\lambda_{p,q}+\kappa^2$ & $\lambda_{p,q}-\kappa^2$ \\
 分母符号 & $>0$ & $>0$ 恒成立 & 可能为零 \\
 共振 & 无 & 无 & $\lambda_{p,q}=\kappa^2$ \\
-适用迭代法 & CG & CG & MINRES/GMRES \\
+适用迭代法 & CG & CG & 依谱而定 \\
 条件数趋势 & $O(h^{-2})$ & 随 $\kappa^2$ 改善 & 近共振时趋于 $\infty$ \\
 \bottomrule
 \end{tabular}
@@ -132,16 +132,20 @@ True Helmholtz 方程 $(-\nabla^2-\kappa^2)u=f$ 的离散矩阵为：
   \label{eq:true_matrix}
 \end{equation}
 
-\begin{theorem}[True Helmholtz 矩阵的不定性]
+\begin{theorem}[True Helmholtz 矩阵的谱分类]
   \label{thm:true_indefinite}
-  当 $\kappa^2 > \lambda_{\min}$ 时，true Helmholtz 矩阵 $A_h$ 是不定的，
-  即存在正特征值和负特征值。
+  记五点 Dirichlet 离散 Laplacian 的最小和最大特征值分别为
+  $\lambda_{\min}$ 与 $\lambda_{\max}$。true Helmholtz 矩阵 $A_h$ 的谱性质如下：
+  \begin{itemize}[itemsep=1pt]
+    \item 若 $\kappa^2 < \lambda_{\min}$，则 $A_h$ 正定；
+    \item 若 $\kappa^2 = \lambda_{p,q}$ 对某个模式成立，则 $A_h$ 奇异；
+    \item 若 $\lambda_{\min}<\kappa^2<\lambda_{\max}$ 且不等于任一离散特征值，则 $A_h$ 不定；
+    \item 若 $\kappa^2>\lambda_{\max}$，则 $A_h$ 负定。
+  \end{itemize}
 
   \textbf{证明}：特征值 $d_{p,q} = \lambda_{p,q}-\kappa^2$。
-  当 $\kappa^2 > \lambda_{1,1}$（最小正特征值）时，
-  低频模式的 $d_{p,q} < 0$（负特征值），
-  高频模式的 $d_{p,q} > 0$（正特征值），
-  矩阵不定。$\qed$
+  上述四种情形分别对应所有 $d_{p,q}>0$、存在 $d_{p,q}=0$、
+  同时存在正负特征值、以及所有 $d_{p,q}<0$。$\qed$
 \end{theorem}
 
 \begin{definition}[True Helmholtz 共振条件]
@@ -163,10 +167,10 @@ True Helmholtz 方程 $(-\nabla^2-\kappa^2)u=f$ 的离散矩阵为：
 
 当 $\kappa^2$ 接近但不等于某特征值 $\lambda_{p^*,q^*}$ 时，可设
 $\kappa^2 = \lambda_{p^*,q^*} + \delta$，$|\delta| \ll 1$。
-此时该模式的频域除数为 $d_{p^*,q^*} = \delta$，
+此时该模式的频域除数为 $d_{p^*,q^*} = -\delta$，
 对应的解分量为：
 \begin{equation}
-  \hat{u}_{p^*,q^*} = \frac{\hat{f}_{p^*,q^*}}{\delta}
+  \hat{u}_{p^*,q^*} = -\frac{\hat{f}_{p^*,q^*}}{\delta}
 \end{equation}
 当 $\delta \to 0$ 时，$|\hat{u}_{p^*,q^*}| \to \infty$，解范数发散。
 
@@ -175,7 +179,8 @@ $\kappa^2 = \lambda_{p^*,q^*} + \delta$，$|\delta| \ll 1$。
 
 \subsubsection{迭代法的适用性}
 
-True Helmholtz 矩阵不定，CG 不适用（CG 要求正定）。
+True Helmholtz 矩阵在穿过离散谱时会变为不定；在这类不定或近奇异参数下，
+CG 不适用（CG 要求正定）。
 适用的迭代法包括：
 \begin{itemize}[itemsep=2pt]
   \item \textbf{GMRES}：适用于一般非对称/不定系统，但收敛速度取决于谱分布；
@@ -190,17 +195,18 @@ True Helmholtz 矩阵不定，CG 不适用（CG 要求正定）。
 \centering
 \caption{Modified 与 True Helmholtz 方程的关键差异}
 \label{tab:modified_vs_true}
+\small
 \begin{tabular}{lcc}
 \toprule
 性质 & modified ($\sigma=+\kappa^2$) & true ($\sigma=-\kappa^2$) \\
 \midrule
-矩阵 & SPD & 对称不定 \\
+矩阵 & SPD & 可能不定或近奇异 \\
 频域分母 & $(\mu_p+\mu_q)/h^2+\kappa^2$ & $(\mu_p+\mu_q)/h^2-\kappa^2$ \\
 分母最小值 & $\geq \kappa^2 > 0$ & 可能为零 \\
 共振 & 不可能 & $\lambda_{p,q}=\kappa^2$ \\
 $\kappa^2\!\uparrow$ 条件数 & 减小 & 增大或趋于 $\infty$ \\
 $\kappa^2\!\uparrow$ 迭代次数 & 通常减少 & 近共振时增加或停滞 \\
-适用迭代法 & CG, GMRES & MINRES, GMRES \\
+适用迭代法 & CG, GMRES & 依谱而定；不定时 MINRES/GMRES \\
 FFT 频域分母风险 & 分母恒正，无小分母共振 & 近共振时不稳定 \\
 \bottomrule
 \end{tabular}
