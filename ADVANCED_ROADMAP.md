@@ -104,7 +104,7 @@ $$(-\nabla^2 + \sigma k^2)u = f, \quad \sigma = \begin{cases} +1 & \text{modifie
 
 | 任务 | 修改方案 | 预计时间 |
 |------|----------|----------|
-| **A2: Kronecker** | T=tridiag(-1,4,-1) → B=tridiag(-1,2,-1)，写 A=h⁻²(I⊗B+B⊗I)+k²I | 1 小时 |
+| **A2: Kronecker** | B=tridiag(-1,2,-1)，写 A=h⁻²(I⊗B+B⊗I)+σI，一维特征值 μₚ=2-2cos(pπ/(N+1)) | 1 小时 |
 | **A5: Lh 符号** | "Lh≈-∇²" → "Lh≈Δ"，修正 Ch2 中间推导 | 1 小时 |
 | **A7: FFT9 统一** | 算法步骤统一为方案 B：û=ĝ/(λ̂_L-k²λ̂_R) | 1 小时 |
 | **A10: 六阶路径** | Helmholtz 情形先令 α=-γ,β=γ 消 c₂，再由 c₄ 矛盾 | 2 小时 |

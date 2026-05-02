@@ -35,7 +35,7 @@ theorem c4_num_mode_11_real (γ : ℝ) : c4_num 1 1 γ = 120 * γ - 4 := by
   unfold c4_num
   ring
 
--- ★ Main theorem over ℝ: no real γ makes c₄ zero for all modes
+-- Algebraic core over ℝ: no real γ makes c₄ zero for all test modes
 theorem sixth_order_impossible_real :
     ¬∃ (γ : ℝ), ∀ (ξ η : ℝ), c4_num ξ η γ = 0 := by
   intro ⟨γ, hγ⟩
@@ -47,7 +47,7 @@ theorem sixth_order_impossible_real :
   have : 2 * (60 * γ + 3) - (120 * γ - 4) = 10 := by ring
   linarith
 
--- ★ Poisson impossibility over ℝ
+-- Poisson restricted-family local-symbol obstruction over ℝ
 def c2_coeff (α ξ η β k2 γ : ℝ) : ℝ :=
   -α * (ξ^2 + η^2) + β * k2 - γ * (ξ^2 + η^2 + k2)
 
@@ -88,8 +88,9 @@ theorem c2_helmholtz_forces_neg_gamma (α β γ k2 : ℝ)
   ring_nf at h_diff
   linarith
 
--- ★ Helmholtz impossibility: no (α, β, γ) makes both c₂=0 and c₄=0 for all modes
--- Note: the impossibility holds for ALL k², including k²=0 (Poisson case)
+-- Helmholtz restricted-family local-symbol obstruction:
+-- no mode-independent (α, β, γ) makes both c₂=0 and c₄=0 for all test modes.
+-- This is an algebraic condition, not a full PDE convergence theorem.
 theorem helmholtz_no_sixth_order_real (k2 : ℝ) :
     ¬∃ (α β γ : ℝ),
       (∀ (ξ η : ℝ), c2_coeff α ξ η β k2 γ = 0) ∧

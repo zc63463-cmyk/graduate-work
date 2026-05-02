@@ -40,6 +40,10 @@ Thumbs.db
 # WorkBuddy internal
 .workbuddy/
 
+# Local historical review notes (kept out of final delivery commit)
+PROJECT_REPORT_V1.0.md
+Problem_To_Update.md
+
 # Lean build artifacts
 .lake/
 code/pde_fft_lean/.lake/

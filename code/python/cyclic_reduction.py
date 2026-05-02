@@ -3,10 +3,20 @@
 Cyclic Reduction & FACR Algorithm Implementation
 ==============================================
 
-Clean implementation of:
+.. deprecated::
+    This file is a historical Poisson-only prototype.
+    The thesis experiments use helmholtz_solver.py which supports the unified
+    sigma framework (-nabla^2 + sigma)u = f.
+    This file is kept for historical comparison only and should not be used
+    for final reported FACR complexity claims.
+
+Implementation of:
   1. Fourier Analysis (2D-DST direct solver)     — O(N^2 log N)
   2. Cyclic Reduction (DST-x + Thomas-y)        — O(N^2 log N), same as FA
-  3. FACR(l) hybrid (CR + FA)                   — O(N^2 log log N), optimal
+  3. FACR(l) hybrid (CR + FA)                   — O(N^2 log N) in this implementation
+     (Classical FACR with full recursive CR can achieve O(N^2 log log N),
+      but this implementation uses complete directional DST, so the asymptotic
+      complexity remains O(N^2 log N).)
 
 For solving: -∇²u = f on [0,1]^2, u|∂Ω = 0 (Dirichlet)
 Discretization: standard 5-point stencil, O(h^2) accuracy
@@ -46,10 +56,10 @@ def build_rhs(n, f_func, bc_func, sx=1.0, sy=1.0):
     bc_t = _make_bc_array(bc_func, x, y[-1], n)
     
     F_adj = F[1:-1, 1:-1].copy()
-    F_adj[0, :]  -= bc_l[1:-1] / h**2
-    F_adj[-1, :] -= bc_r[1:-1] / h**2
-    F_adj[:, 0]  -= bc_b[1:-1] / h**2
-    F_adj[:, -1] -= bc_t[1:-1] / h**2
+    F_adj[0, :]  += bc_l[1:-1] / h**2
+    F_adj[-1, :] += bc_r[1:-1] / h**2
+    F_adj[:, 0]  += bc_b[1:-1] / h**2
+    F_adj[:, -1] += bc_t[1:-1] / h**2
     
     return x, y, F_adj, (bc_l, bc_r, bc_b, bc_t), h
 
@@ -152,8 +162,9 @@ def cr_solver(n, f_func, bc_func, sx=1.0, sy=1.0):
     Fh = np.zeros((N,N))
     for j in range(N): Fh[:,j] = dst(F_adj[:,j], type=1, norm='ortho')
     
-    # Per-mode eigenvalues of D_block = tridiag(-1,4,-1)
-    kv=np.arange(1,N+1); dp=4.0-2.0*np.cos(kv*np.pi/(N+1)); av=-1.0
+    # Per-mode eigenvalues of 1D Laplacian: B=tridiag(-1,2,-1)
+    # mu_p = 2 - 2*cos(p*pi/(N+1)), N=n-2 for Dirichlet
+    kv=np.arange(1,N+1); dp=2.0-2.0*np.cos(kv*np.pi/(N+1)); av=-1.0
     
     # Solve each mode's tridiagonal system
     Uh=np.zeros((N,N)); h2=h*h
@@ -221,7 +232,9 @@ def facr_solver(n, f_func, bc_func, sx=1.0, sy=1.0, l=None):
     tridiagonal with VARIABLE diagonal d[] and VARIABLE off-diagonal e[].
     We track the full (d[], e[]) structure per level for correct multi-step CR.
     
-    Complexity: O(N^2 log log N) with optimal l ~ log2(log2(N)).
+    Complexity: O(N^2 log N) in this implementation (complete directional DST).
+    Classical FACR with full recursive CR can achieve O(N^2 log log N),
+    but requires a more complete recursive cyclic reduction implementation.
     """
     x,y,F_adj,bcs,h = build_rhs(n,f_func,bc_func,sx,sy); N=n-2
     bc_l,bc_r,bc_b,bc_t=bcs

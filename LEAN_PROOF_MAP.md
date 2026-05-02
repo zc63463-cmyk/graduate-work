@@ -1,0 +1,50 @@
+# Lean Proof Map
+
+审查日期：2026-04-29
+范围：`code/lean4_formalization/`、`thesis/chapters/appendix_lean4.tex`、`thesis/chapters/2_math_preliminary.tex`、`thesis/chapters/7_conclusion.tex`、`FINAL_POLISH_REPORT.md`。
+
+## Build And Proof-Escape Check
+
+- Lean project: `code/lean4_formalization/`
+- Build command: `lake build`
+- Build result: pass. Output ended with `Build completed successfully (3 jobs).`
+- Build warnings: unused `simp` arguments in `SixthOrderImpossibility.lean`; `.lake/packages/proofwidgets` has local changes. These do not block the build.
+- Proof escapes in active project `.lean` sources: none found for `sorry`, `admit`, `axiom`, or `unsafe`.
+- Active theorem declarations counted from compiled source files: 14 in `SixthOrderImpossibility.lean`, 10 in `SixthOrderImpossibility/MathlibTest.lean`, 0 in `Basic.lean`.
+- Ignored as proof source: `.lake/` dependencies and `SixthOrderImpossibility_Int_only.lean.bak`. The backup duplicates theorem names and is not a build target.
+
+## Theorem Mapping Table
+
+| Lean theorem | Mathematical statement | Thesis location | Proof strategy | Scope | Is thesis wording accurate? yes/no/partial | Suggested wording |
+|---|---|---|---|---|---|---|
+| `c4_num_mode_10` (`SixthOrderImpossibility.lean:34`) | Integer-domain identity: c4 numerator at mode `(1,0)` equals `60 gamma + 3`. | `appendix_lean4.tex:57-59`; `2_math_preliminary.tex:575-582` | unfold, simp, `omega` | Algebraic helper over `Int`; not PDE convergence. | partial | If counting all theorems, update integer count; otherwise call it an integer helper theorem. |
+| `c4_num_mode_11` (`SixthOrderImpossibility.lean:44`) | Integer-domain identity: c4 numerator at mode `(1,1)` equals `120 gamma - 4`. | `appendix_lean4.tex:57-59`; `2_math_preliminary.tex:575-582` | unfold, simp, `omega` | Algebraic helper over `Int`. | partial | Same as above. |
+| `c4_num_mode_01` (`SixthOrderImpossibility.lean:52`) | Symmetry identity: mode `(0,1)` gives `60 gamma + 3`. | No explicit thesis row; supports appendix count. | unfold, simp, `omega` | Algebraic helper over `Int`. | partial | Either include as helper or avoid giving exact theorem counts. |
+| `c4_num_mode_21` (`SixthOrderImpossibility.lean:62`) | Additional mode check: `(2,1)` gives `1020 gamma + 95`. | No explicit thesis row; supports auxiliary exploration. | unfold, simp, `omega` | Algebraic helper over `Int`. | partial | Optional helper; not needed for the main two-mode contradiction. |
+| `c2_at_10` (`SixthOrderImpossibility.lean:81`) | Poisson integer c2 coefficient at `(1,0)` is `-(alpha + gamma)`. | `2_math_preliminary.tex:542-547`; `appendix_lean4.tex:66-69` | unfold, simp, `omega` | Algebraic coefficient identity. | partial | Mention as c2 helper if appendix lists all helpers. |
+| `c2_at_01` (`SixthOrderImpossibility.lean:90`) | Poisson integer c2 coefficient at `(0,1)` is `-(alpha + gamma)`. | `2_math_preliminary.tex:542-547`; `appendix_lean4.tex:66-69` | unfold, simp, `omega` | Algebraic coefficient identity. | partial | Same as above. |
+| `c2_at_11` (`SixthOrderImpossibility.lean:99`) | Poisson integer c2 coefficient at `(1,1)` is `-2(alpha + gamma)`. | `2_math_preliminary.tex:542-547`; `appendix_lean4.tex:66-69` | unfold, simp, `omega` | Algebraic coefficient identity. | partial | Same as above. |
+| `c2_poisson_forces_alpha_neg_gamma` (`SixthOrderImpossibility.lean:108`) | In the integer Poisson setting, c2 zero at `(1,0)` forces `alpha + gamma = 0`. | `2_math_preliminary.tex:542-547`; `appendix_lean4.tex:57-69` | rewrite helper theorem, `omega` | Integer-domain auxiliary version of Poisson c2 constraint. | partial | Appendix can say integer helpers mirror the real-domain argument. |
+| `no_integer_gamma` (`SixthOrderImpossibility.lean:122`) | No integer gamma solves both `60 gamma + 3 = 0` and `120 gamma - 4 = 0`. | `2_math_preliminary.tex:575-582`; `appendix_lean4.tex:66-68` | contradiction, `omega` | Integer algebra only; rational/real impossibility handled elsewhere. | partial | Keep as helper, not the main real theorem. |
+| `no_rational_gamma_core` (`SixthOrderImpossibility.lean:131`) | Clearing denominators, the two linear constraints have no rational solution with nonzero denominator. | `2_math_preliminary.tex:580-586` | integer contradiction, `omega` | Rational-core helper. | partial | If mentioned, call it denominator-cleared rational helper. |
+| `no_rational_gamma` (`SixthOrderImpossibility.lean:144`) | No positive-denominator rational gamma satisfies both constraints. | `2_math_preliminary.tex:580-586` | integer contradiction, `omega` | Rational helper, not a PDE theorem. | partial | Optional helper; not currently listed in appendix table. |
+| `sixth_order_impossible` (`SixthOrderImpossibility.lean:162`) | No integer gamma makes c4 numerator zero for all integer modes. | `appendix_lean4.tex:57-59`; `2_math_preliminary.tex:584-586` | instantiate modes `(1,0)` and `(1,1)`, rewrite, `omega` | Integer c4 obstruction only. | partial | Do not describe this theorem alone as proving the real PDE claim. |
+| `poisson_no_sixth_order` (`SixthOrderImpossibility.lean:174`) | Integer Poisson-style obstruction: `alpha + gamma = 0` plus all-mode c4 zero is impossible. | `appendix_lean4.tex:57-59`; `2_math_preliminary.tex:584-591` | reduce to `sixth_order_impossible` | Integer restricted-family helper. | partial | Pair with the real theorem in the appendix wording. |
+| `c4_is_the_obstruction` (`SixthOrderImpossibility.lean:184`) | If all integer modes had c4 zero for one gamma, contradiction follows. | `2_math_preliminary.tex:557-582`; `appendix_lean4.tex:66-68` | wrapper around `sixth_order_impossible` | Integer c4 obstruction. | partial | Optional helper, not a standalone thesis proposition. |
+| `c4_num_mode_10_real` (`MathlibTest.lean:29`) | Real-domain identity: c4 numerator at `(1,0)` equals `60 gamma + 3`. | `appendix_lean4.tex:45`; `2_math_preliminary.tex:575-582` | unfold, `ring` | Algebraic coefficient identity over `Real`. | yes | Current appendix row is accurate. |
+| `c4_num_mode_11_real` (`MathlibTest.lean:34`) | Real-domain identity: c4 numerator at `(1,1)` equals `120 gamma - 4`. | `appendix_lean4.tex:46`; `2_math_preliminary.tex:575-582` | unfold, `ring` | Algebraic coefficient identity over `Real`. | yes | Current appendix row is accurate. |
+| `sixth_order_impossible_real` (`MathlibTest.lean:39`) | No real gamma makes c4 zero for all real modes under the encoded c4 polynomial. | `appendix_lean4.tex:47`; `2_math_preliminary.tex:580-586` | two-mode contradiction, `ring`, `linarith` | Algebraic c4 obstruction; not full truncation-error derivation. | yes | Current wording is accurate if kept tied to the encoded c4 polynomial. |
+| `c2_poisson_forces_neg_gamma` (`MathlibTest.lean:55`) | In the real Poisson c2 expression, c2 zero at `(1,0)` forces `alpha = -gamma`. | `appendix_lean4.tex:48`; `2_math_preliminary.tex:542-547` | unfold, `linarith` | Algebraic c2 constraint. | yes | Current appendix row is accurate. |
+| `poisson_no_sixth_order_real` (`MathlibTest.lean:61`) | No real `alpha,gamma` with `alpha + gamma = 0` can also make c4 zero for all modes. | `appendix_lean4.tex:49`; `2_math_preliminary.tex:584-591` | reduce to `sixth_order_impossible_real` | Restricted three-parameter family after c2 elimination. | yes | Current appendix row is accurate. |
+| `c2_helmholtz_forces_neg_gamma` (`MathlibTest.lean:78`) | From c2 zero at modes `(1,0)` and `(1,1)`, Lean proves `alpha + gamma = 0`. | `appendix_lean4.tex:50`; `2_math_preliminary.tex:516-533`; `7_conclusion.tex:39-43` | subtract mode equations, `ring_nf`, `linarith` | Algebraic Helmholtz c2 helper; it does not by itself state `beta = gamma`. | partial | Say Lean verifies the `alpha = -gamma` part; the `beta = gamma` condition is analytic/derived, unless an explicit Lean theorem is added. |
+| `helmholtz_no_sixth_order_real` (`MathlibTest.lean:93`) | No real `alpha,beta,gamma` can make the encoded Helmholtz c2 expression and c4 expression vanish for all modes. | `appendix_lean4.tex:51`; `2_math_preliminary.tex:568-593`; `7_conclusion.tex:35-43` | use c2 helper, reduce to real c4 impossibility | Restricted three-parameter algebraic obstruction; no solver convergence or PDE proof. | yes | Current theorem-row wording is accurate if it says “三参数族”. |
+| `c2_mode_dependent_helmholtz` (`MathlibTest.lean:116`) | From c2 zero at `(1,0)`, Lean derives `alpha = -gamma + (beta - gamma) k2`. | No explicit thesis row; relates to `2_math_preliminary.tex:519-533` | unfold, `linarith` | Helper for Helmholtz c2 parameter relation. | partial | Add as helper only if the appendix table is expanded. |
+| `c2_mode_01_helmholtz` (`MathlibTest.lean:123`) | Same Helmholtz c2 relation from mode `(0,1)`. | No explicit thesis row; relates to `2_math_preliminary.tex:519-533` | unfold, `linarith` | Symmetry helper. | partial | Optional helper. |
+| `c2_helmholtz_mode_20_forces_neg_gamma` (`MathlibTest.lean:133`) | From c2 zero at modes `(1,0)` and `(2,0)`, Lean also derives `alpha + gamma = 0`. | No explicit thesis row; relates to `2_math_preliminary.tex:519-533` | subtract mode equations, `ring_nf`, `linarith` | Alternative Helmholtz c2 helper. | partial | Optional helper; not needed in the public appendix table. |
+
+## Unmapped Or Weakly Mapped Items
+
+- `Basic.lean` contains only `def hello := "world"` and has no theorem mapped to the thesis.
+- `SixthOrderImpossibility.lean:192-218` contains a commented Mathlib outline with theorem-looking lines. These are not compiled theorem declarations and should not be counted as proved theorem names.
+- `appendix_lean4.tex:57-59` and `7_conclusion.tex:42-43` state “整数域 12 定理 + 实数域 8 定理”. Current active source contains 14 integer-domain theorem declarations and 10 real-domain theorem declarations. Either update the counts or describe the table as a selected core theorem list.
+- Thesis statements about `beta = gamma` in Helmholtz c2 analysis are mathematically plausible from the analytic derivation, but current named Lean theorem rows directly expose only `alpha = -gamma`; `beta = gamma` is not presented as a named Lean theorem.

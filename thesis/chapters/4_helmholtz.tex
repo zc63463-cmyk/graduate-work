@@ -4,59 +4,314 @@
 \section{Helmholtz 方程的 FFT 求解}
 \label{sec:helmholtz}
 
-\subsection{离散 Helmholtz 方程}
+本章在统一的 $\sigma$ 参数框架下，系统讨论 Helmholtz 方程的 FFT 快速求解。
+首先建立 modified Helmholtz（$\sigma=+\kappa^2$）与 true Helmholtz（$\sigma=-\kappa^2$）
+的分类框架，然后分别分析两者的矩阵性质、频域特征与数值行为差异。
 
-Helmholtz 方程 $(-\nabla^2 + k^2)u = f$ 的五点差分离散为：
+\subsection{$\sigma$ 参数统一框架}
+
+\subsubsection{框架定义}
+
+在统一框架 $(-\nabla^2+\sigma)u=f$ 下，参数 $\sigma$ 的取值决定了方程类型和矩阵性质：
+
+\begin{table}[H]
+\centering
+\caption{$\sigma$ 参数框架下三类方程的性质对比}
+\label{tab:sigma_framework}
+\small
+\begin{tabularx}{\textwidth}{l>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X}
+\toprule
+性质 & Poisson ($\sigma=0$) & modified H. ($\sigma=+\kappa^2$) & true H. ($\sigma=-\kappa^2$) \\
+\midrule
+矩阵对称性 & 对称 & 对称 & 对称 \\
+正定性 & 正定 & 正定 & 依谱而定 \\
+频域分母 & $\lambda_{p,q}$ & $\lambda_{p,q}+\kappa^2$ & $\lambda_{p,q}-\kappa^2$ \\
+分母符号 & $>0$ & $>0$ 恒成立 & 可正可负或为零 \\
+共振 & 无 & 无 & $\lambda_{p,q}=\kappa^2$ \\
+适用迭代法 & CG & CG & 正定: CG；不定: MINRES/GMRES \\
+条件数趋势 & $O(h^{-2})$ & Dirichlet 下改善 & 近共振指标趋于 $\infty$ \\
+\bottomrule
+\end{tabularx}
+\end{table}
+表~\ref{tab:sigma_framework} 中的矩阵性质以 Dirichlet 五点离散系统
+或 Neumann ghost-point 对称化后的变量为口径；原始 Neumann ghost-point
+矩阵本身是非对称的，不能直接套用 Dirichlet 条件数结论。
+
+\subsubsection{频域分母的统一公式}
+
+对于五点差分格式，频域分母统一为：
 \begin{equation}
-  \frac{1}{h^2}(4u_{i,j} - u_{i-1,j} - u_{i+1,j} - u_{i,j-1} - u_{i,j+1}) + k^2 u_{i,j} = f_{i,j}
+  d_{p,q} = \frac{\mu_p + \mu_q}{h^2} + \sigma
+  \label{eq:denom_unified}
 \end{equation}
-与 Poisson 方程的唯一区别在于对角元增加了 $k^2$ 项。
+其中 $\mu_p = 2-2\cos(p\pi/(N+1))$（Dirichlet），
+$\mu_k = 2-2\cos(k\pi/(n-1))$（Neumann）。
 
-在 Fourier 域中，这个修正等价于将特征值从 $\lambda_{p,q}$ 变为 $\lambda_{p,q} + k^2$，
-频域求解公式变为：
+对于九点紧致差分格式（FFT9），原始频域分母统一为：
 \begin{equation}
-  \hat{u}_{p,q} = \frac{\hat{f}_{p,q}}{\lambda_{p,q} + k^2}
-  \label{eq:helm-freq-solve}
+  D_{p,q}^{\mathrm{raw}} = -\hat{\lambda}_L(p,q) + \sigma\,\hat{\lambda}_R(p,q)
+  \label{eq:denom_fft9_unified}
+\end{equation}
+其中 $L_h\approx\Delta$，故 Dirichlet 非零模态下 $\hat{\lambda}_L(p,q)<0$，
+而 $\hat{\lambda}_R(p,q)>0$。等价的有效频域分母形式为
+\[
+  D_{p,q}^{(9)}
+  =
+  -\frac{\hat{\lambda}_L(p,q)}{\hat{\lambda}_R(p,q)}
+  +\sigma,
+\]
+其中 $\lambda_{p,q}^{(9)}=-\hat{\lambda}_L(p,q)/\hat{\lambda}_R(p,q)$
+是 FFT9 对连续正算子 $-\Delta$ 特征值的内点 Fourier symbol 四阶近似。
+两种写法在数学上等价，
+但原始形式 $D^{\mathrm{raw}}$ 与物理空间修正右端项 $\tilde{g}=(R_h f)_I+\text{边界修正}$ 的
+DST-I 结果直接匹配，避免了非齐次边界条件下 $R_h$ 算子与有效除数形式之间的混淆（详见第~\ref{sec:fft}章）。
+
+因此，五点 FA/CR/FACR-like 直接法推广到 Helmholtz 方程时只需将五点分母从
+$\lambda_{p,q}^{(5)}$ 改为 $\lambda_{p,q}^{(5)}+\sigma$。对于 FFT9，则应使用
+$D_{p,q}^{\mathrm{raw}}=-\hat{\lambda}_L+\sigma\hat{\lambda}_R$，并与物理空间修正右端项
+$\tilde{g}$ 配套使用；变换和回代框架仍保持 DST-I 对角化结构。
+本文当前实现同样采用这一 raw 分母。
+若在其他实现中将整个 FFT9 线性系统乘以 $-1$，对应分母会变为
+$\hat{\lambda}_L-\sigma\hat{\lambda}_R=-D_{p,q}^{\mathrm{raw}}$；
+此时右端项也必须同步乘以 $-1$，才能得到相同的频域解。
+换言之，反号系统只能作为整体代数变换使用，不能与本文 raw 右端项或 raw 分母交叉混用。
+
+\subsection{Modified Helmholtz 方程（$\sigma = +\kappa^2$）}
+
+\subsubsection{正定性与条件数分析}
+
+Modified Helmholtz 方程 $(-\nabla^2+\kappa^2)u=f$ 的 Dirichlet 五点差分离散矩阵为：
+\begin{equation}
+  A_h = \frac{1}{h^2}(I \otimes B + B \otimes I) + \kappa^2 I
+  \label{eq:modified_matrix}
 \end{equation}
 
-因此，所有 FFT 直接法（FA、CR、FACR、FFT9）均可自然推广到 Helmholtz 方程，
-只需在频域除数中加上 $k^2$ 项。
+\begin{theorem}[Modified Helmholtz 矩阵的正定性与条件数改善]
+  \label{thm:modified_spd}
+  考虑固定网格上的 Dirichlet 五点离散矩阵
+  \[
+    A_\kappa=A_0+\kappa^2I,\qquad \kappa>0,
+  \]
+  其中 $A_0$ 为 Poisson 的五点正 Laplacian 矩阵。若
+  $0<\lambda_{\min}\leq\lambda_{p,q}\leq\lambda_{\max}$，
+  则 $A_\kappa$ 为 SPD，且
+  \begin{equation}
+    \kappa_2(A_\kappa)
+    =
+    \frac{\lambda_{\max}+\kappa^2}{\lambda_{\min}+\kappa^2}
+    <
+    \frac{\lambda_{\max}}{\lambda_{\min}}
+    =
+    \kappa_2(A_0).
+    \label{eq:modified_condition}
+  \end{equation}
 
-\subsection{共振检测}
+  \textbf{证明}：由于 $A_0$ 可由正交 DST-I 对角化，
+  $A_\kappa=A_0+\kappa^2I$ 的特征值为
+  $\lambda_{p,q}+\kappa^2>0$，故 $A_\kappa$ 为 SPD。
+  条件数不等式由交叉相乘得到：
+  \[
+    (\lambda_{\max}+\kappa^2)\lambda_{\min}
+    <
+    \lambda_{\max}(\lambda_{\min}+\kappa^2),
+  \]
+  等价于 $\kappa^2\lambda_{\min}<\kappa^2\lambda_{\max}$，
+  这由 $\kappa>0$ 和 $\lambda_{\min}<\lambda_{\max}$ 立即成立。$\qed$
+\end{theorem}
 
-当 $k^2$ 等于离散 Laplacian 的某个特征值时，
-频域除数 $\lambda_{p,q} + k^2$ 可能为零（或非常小），
-导致解不存在或不稳定。
+因此，在同一 Dirichlet 五点 SPD 离散系统中，$\kappa>0$ 的 modified Helmholtz
+相对于 Poisson 具有更小的 2-范数条件数；若 $\kappa=0$，则退化为 Poisson，
+二者条件数相等。该条件数改善结论不自动外推到原始 Neumann ghost-point
+非对称矩阵、mixed 边界或一般 non-normal 系统。
 
-\begin{definition}[共振条件]
-  若存在模式 $(p,q)$ 使得 $|\lambda_{p,q} + k^2| < \varepsilon$
-  （$\varepsilon$ 为小常数），则称 $k^2$ 接近共振波数。
+\begin{remark}
+  这一结论与 true Helmholtz 方程（$\sigma=-\kappa^2$）形成鲜明对比：
+  true Helmholtz 的谱分母指标在 near-resonance 时可能趋于无穷，
+  而 modified Helmholtz 在上述同一 Dirichlet 五点 SPD 系统中随 $\kappa^2$ 增大改善条件数。
+  两者在数值行为上的差异是本质性的，不应混淆。
+\end{remark}
+
+\subsubsection{Neumann 边界条件}
+
+对于 Neumann 边界条件，ghost-point 对称化后的频域分母为：
+\begin{equation}
+  d_{k,l} = \frac{\mu_k^{\mathrm{Neu}} + \mu_l^{\mathrm{Neu}}}{h^2} + \kappa^2
+  \label{eq:modified_neumann_denom}
+\end{equation}
+其中 Neumann 特征值为：
+\begin{equation}
+  \mu_k^{\mathrm{Neu}} = 2\left(1 - \cos\frac{k\pi}{n-1}\right),
+  \quad k = 0, 1, \ldots, n-1
+\end{equation}
+
+注意 $\mu_0^{\mathrm{Neu}} = 0$ 对应常数模式。
+对于 Poisson 方程（$\sigma=0$），$d_{0,0}=0$ 导致奇异性，
+需要兼容条件 $\sum w_iw_jf_{i,j}=0$，并在对称化变量中令
+$\widehat{\tilde U}_{0,0}=0$；
+对于 modified Helmholtz（$\sigma=+\kappa^2$），$d_{0,0}=\kappa^2 > 0$，
+分母恒正，无奇异性，不存在零模态小分母问题。对于 true Helmholtz
+（$\sigma=-\kappa^2$），当 $\kappa>0$ 时零模态分母为 $-\kappa^2$，
+但其他非零模态仍可能满足 $\lambda_k+\lambda_l-\kappa^2\approx0$，
+从而产生近共振小分母。
+
+\subsubsection{FFT9 格式}
+
+对于九点紧致格式，modified Helmholtz 的原始频域除数为：
+\begin{equation}
+  D_{p,q}^{\mathrm{raw}} = -\hat{\lambda}_L + \kappa^2\,\hat{\lambda}_R
+\end{equation}
+因 $-\hat{\lambda}_L > 0$（$L_h \approx \Delta$，$\hat{\lambda}_L < 0$）
+且 $\hat{\lambda}_R > 0$，故 $D_{p,q}^{\mathrm{raw}} > 0$ 恒成立，
+FFT9 频域求解不会出现 true Helmholtz 型小分母奇异。
+
+\subsection{True Helmholtz 方程（$\sigma = -\kappa^2$）}
+
+\subsubsection{不定矩阵与共振}
+
+True Helmholtz 方程 $(-\nabla^2-\kappa^2)u=f$ 的离散矩阵为：
+\begin{equation}
+  A_h = \frac{1}{h^2}(I \otimes B + B \otimes I) - \kappa^2 I
+  \label{eq:true_matrix}
+\end{equation}
+
+\begin{theorem}[True Helmholtz 矩阵的谱分类]
+  \label{thm:true_indefinite}
+  记五点 Dirichlet 离散 Laplacian 的最小和最大特征值分别为
+  $\lambda_{\min}$ 与 $\lambda_{\max}$。true Helmholtz 矩阵 $A_h$ 的谱性质如下：
+  \begin{itemize}[itemsep=1pt]
+    \item 若 $\kappa^2 < \lambda_{\min}$，则 $A_h$ 正定；
+    \item 若 $\kappa^2 = \lambda_{p,q}$ 对某个模式成立，则 $A_h$ 奇异；
+    \item 若 $\lambda_{\min}<\kappa^2<\lambda_{\max}$ 且不等于任一离散特征值，则 $A_h$ 不定且非奇异；
+    \item 若 $\kappa^2>\lambda_{\max}$，则 $A_h$ 负定。
+  \end{itemize}
+
+  \textbf{证明}：特征值 $d_{p,q} = \lambda_{p,q}-\kappa^2$。
+  上述四种情形分别对应所有 $d_{p,q}>0$、存在 $d_{p,q}=0$、
+  同时存在正负特征值、以及所有 $d_{p,q}<0$。最后一种情形中
+  $-A_h$ 为 SPD，但 $A_h$ 本身不是 SPD。$\qed$
+\end{theorem}
+
+\begin{definition}[True Helmholtz 共振条件]
+  \label{def:resonance}
+  对于五点 Dirichlet 格式，near-resonance 小分母条件为
+  若存在模式 $(p,q)$ 使得
+  \begin{equation}
+    |d_{p,q}|=|\lambda_{p,q} - \kappa^2| < \varepsilon
+    \label{eq:resonance_condition}
+  \end{equation}
+  （$\varepsilon$ 为小常数），则称 $\kappa^2$ 接近共振波数。
+  此时频域除数 $d_{p,q} \approx 0$，解范数急剧增大，数值不稳定。
+
+  注意：共振条件是 $\lambda_{p,q} = \kappa^2$（特征值等于波数平方），
+  而非 $\lambda_{p,q} + \kappa^2 \approx 0$。后者仅对 modified Helmholtz 有意义，
+  且 modified Helmholtz 中该条件\textbf{永不成立}（因 $\lambda_{p,q}+\kappa^2 > 0$ 恒正）。
+
+  对于 FFT9 紧致格式，true Helmholtz 的原始分母为
+  \[
+  D_{p,q}^{\mathrm{raw}}
+  =
+  -\hat{\lambda}_L(p,q)-\kappa^2\hat{\lambda}_R(p,q).
+  \]
+  因此 FFT9 的小分母条件为
+  \[
+  -\hat{\lambda}_L(p,q)\approx \kappa^2\hat{\lambda}_R(p,q),
+  \]
+  等价地，
+  \[
+  -\frac{\hat{\lambda}_L(p,q)}{\hat{\lambda}_R(p,q)}
+  \approx
+  \kappa^2.
+  \]
+  这说明 FFT9 的共振判据应使用紧致格式的有效特征值
+  $\lambda^{(9)}_{p,q}=-\hat{\lambda}_L(p,q)/\hat{\lambda}_R(p,q)$，
+  而不是直接套用五点格式的 $\lambda_{p,q}$。
+  对于 true Helmholtz 情形，FFT9 的 Fourier symbol 一致性结论仍然成立；
+  但若 $\kappa^2$ 接近上述有效离散特征值，则离散系统会出现小分母或近奇异性，
+  整体误差可能被稳定性常数放大。因此，四阶 consistency 不应被解读为
+  near-resonance 参数下必然有稳定的四阶全局误差。
 \end{definition}
 
-本文实现了共振检测函数，在求解前检查频域除数的最小值，
-并在检测到共振时发出警告。
+\subsubsection{近共振分析}
+
+当 $\kappa^2$ 接近但不等于某特征值 $\lambda_{p^*,q^*}$ 时，可设
+$\kappa^2 = \lambda_{p^*,q^*} + \delta$，$|\delta| \ll 1$。
+此时该模式的频域除数为 $d_{p^*,q^*} = -\delta$，
+对应的解分量为：
+\begin{equation}
+  \hat{u}_{p^*,q^*} = -\frac{\hat{f}_{p^*,q^*}}{\delta}
+\end{equation}
+当 $\delta \to 0$ 时，$|\hat{u}_{p^*,q^*}| \to \infty$，解范数发散。
+
+对于其余模式 $(p,q) \neq (p^*,q^*)$，频域除数 $d_{p,q} = \lambda_{p,q}-\lambda_{p^*,q^*}-\delta$，
+当 $\delta$ 较小时 $d_{p,q}$ 不接近零，这些模式的解分量不受影响。
+
+\subsubsection{迭代法的适用性}
+
+True Helmholtz 矩阵在穿过离散谱时会变为奇异或不定；
+当 $\kappa^2>\lambda_{\max}$ 时 $A_h$ 负定而非 SPD。
+在不定或近奇异参数下，CG 不适用（CG 要求正定）。
+若 $\kappa^2<\lambda_{\min}$，当前 Dirichlet 五点矩阵仍为正定，此时可使用 CG。
+适用的迭代法包括：
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{GMRES}：适用于一般非对称/不定系统，但收敛速度取决于谱分布；
+  \item \textbf{MINRES}：适用于对称不定系统，优于 GMRES（更少存储）；
+  \item \textbf{Shifted Laplacian 预处理}：以 $(-\nabla^2-(\kappa^2-i\eta))$ 为预处理矩阵 $M$，
+        其中 $\eta$ 为复数移位参数。$M^{-1}A$ 的谱聚集在 1 附近，有利于 GMRES 收敛~\cite{Ernst2011}。
+\end{itemize}
+
+\subsection{Modified 与 True Helmholtz 的对比总结}
+
+\begin{table}[H]
+\centering
+\caption{Modified 与 True Helmholtz 方程的关键差异}
+\label{tab:modified_vs_true}
+\small
+\begin{tabular}{lcc}
+\toprule
+性质 & modified ($\sigma=+\kappa^2$) & true ($\sigma=-\kappa^2$) \\
+\midrule
+矩阵 & SPD & 正定/奇异/不定/负定，依谱而定 \\
+频域分母 & $(\mu_p+\mu_q)/h^2+\kappa^2$ & $(\mu_p+\mu_q)/h^2-\kappa^2$ \\
+分母最小值 & $\geq \kappa^2 > 0$ & 可能为零 \\
+共振 & 不可能 & $\lambda_{p,q}=\kappa^2$ \\
+$\kappa^2\!\uparrow$ 条件数 & Dirichlet 五点下减小 & 近共振时谱分母指标趋于 $\infty$ \\
+$\kappa^2\!\uparrow$ 迭代次数 & 通常减少 & 近共振时增加或停滞 \\
+适用迭代法 & CG, GMRES & 依谱而定；不定时 MINRES/GMRES \\
+FFT 频域分母风险 & 分母恒正，无小分母共振 & 近共振时不稳定 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+这一对比表明：两类 Helmholtz 方程在矩阵性质、频域行为和迭代收敛性方面
+存在根本差异。将两者混淆——例如将 modified Helmholtz 的良好条件数
+误归因于"大波数问题已解决"——会导致严重的理论错误。
 
 \subsection{Neumann 边界条件的 Ghost-Point 对称化方法}
 
 对于 Neumann 边界条件，ghost-point Laplacian 矩阵 $G$ 是非对称的。
 如第\ref{sec:math}章所述，通过对角缩放 $S = D^{-1}GD$ 实现对称化，
 使得 $S$ 可被 DCT-I 对角化。
-
-\subsubsection{Helmholtz 修正}
-
-对于 Helmholtz 方程，Neumann 边界条件下的频域求解公式为：
-\begin{equation}
-  \hat{u}_{k,l} = \frac{\hat{f}_{k,l}}{\lambda_k^{\mathrm{Neu}} + \lambda_l^{\mathrm{Neu}} + k^2}
-\end{equation}
-其中 Neumann 特征值为：
-\begin{equation}
-  \lambda_k^{\mathrm{Neu}} = \frac{2}{h^2}\left(1 - \cos\frac{k\pi}{n-1}\right),
-  \quad k = 0, 1, \ldots, n-1
-\end{equation}
-
-注意 $k=0$ 对应 $\lambda_0^{\mathrm{Neu}} = 0$（常数模式），
-对于 Poisson 方程（$k^2 = 0$）会导致奇异性，
-但对于 Helmholtz 方程（$k^2 > 0$），分母为 $k^2 > 0$，无奇异性。
+若 $U$ 的行、列分别对应 $x,y$ 方向，原始矩阵形式可写为
+\[
+  G_xU+UG_y^T+\sigma U=F.
+\]
+变量缩放为
+\[
+  \tilde U=D_x^{-1}UD_y^{-1},
+  \qquad
+  \tilde F=D_x^{-1}FD_y^{-1}.
+\]
+由于 $S_x=D_x^{-1}G_xD_x$、$S_y=D_y^{-1}G_yD_y$ 均为对称矩阵，可得
+\[
+  S_x\tilde U+\tilde U S_y+\sigma\tilde U=\tilde F.
+\]
+频域中求解的是
+\[
+  \widehat{\tilde U}_{k,l}
+  =\frac{\widehat{\tilde F}_{k,l}}{\lambda_k+\lambda_l+\sigma},
+  \qquad U=D_x\tilde U D_y.
+\]
+因此 DCT-I 变换作用在对称化变量上，而最终输出仍恢复到原物理节点变量。
 
 \subsubsection{CR/FACR 中的 Neumann 处理}
 
@@ -75,3 +330,36 @@ $y$-方向三对角系统的次对角线不再是常数 $-1$，
 $x$-方向使用 DCT-I 变换（$n$ 个节点），
 $y$-方向使用 DST-I 变换（$n-2$ 个内节点）。
 右端项的缩放和边界修正需针对各方向分别处理。
+
+\subsection{共振检测的实现}
+
+本文实现了频域共振检测函数，在求解前检查所有频域除数的最小绝对值：
+\begin{equation}
+  \delta_{\min} = \min_{p,q} |d_{p,q}| = \min_{p,q} \left|\frac{\mu_p+\mu_q}{h^2}+\sigma\right|
+\end{equation}
+
+对于 modified Helmholtz（$\sigma=+\kappa^2$），$\delta_{\min} \geq \kappa^2 > 0$，
+共振检测永远不会触发。
+
+对于 true Helmholtz（$\sigma=-\kappa^2$），当 $\delta_{\min} < \varepsilon$
+（本文取 $\varepsilon = 10^{-10}$）时发出共振警告，
+提示解可能不可靠。
+
+\subsection{Neumann Poisson 兼容条件}
+
+对于纯 Neumann 边界条件下的 Poisson 方程（$\sigma=0$），
+频域分母 $d_{0,0} = 0$，需要满足兼容条件：
+\begin{equation}
+  \sum_{i,j} w_i w_j f_{i,j} = 0
+  \label{eq:neumann_compat}
+\end{equation}
+其中 $w_i$ 为梯形积分权重（端点 $1/2$，内点 $1$）。
+满足兼容条件后，本文在对称化变量中令
+$\widehat{\tilde U}_{0,0}=0$，这等价于恢复后的解满足
+\[
+  \sum_{i,j} w_iw_j U_{i,j}=0,
+\]
+从而在加权平均意义下选取唯一代表元。若至少一个方向为 Dirichlet，
+则常数零空间被 Dirichlet 边界消除；modified Helmholtz 的 $\sigma>0$
+也会将零模态分母移至正数，因此二者均不需要纯 Neumann Poisson
+的兼容条件。

@@ -14,7 +14,9 @@ $$
 A \mathbf{u} = \mathbf{f}, \quad A = I \otimes T + T \otimes I
 $$
 
-其中 $T = \text{tridiag}(-1, 4, -1)$，系统规模 $N^2 \times N^2$。
+其中 $B = \text{tridiag}(-1, 2, -1)$，系统规模 $N^2 \times N^2$。
+（注：若保留块三对角视角，对角块可记为 $T=\mathrm{tridiag}(-1,4,-1)$，
+但此时一维特征值为 $\mu_p=2-2\cos\frac{p\pi}{N+1}$，而非 $4-2\cos\theta_p$。）
 
 ---
 

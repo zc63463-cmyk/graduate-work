@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
 """
+Deprecated prototype.
+
+This module implements an early Poisson-only FFT9 prototype.
+For the unified sigma-framework Helmholtz/Poisson solver used in the thesis,
+please use helmholtz_solver.fft9_helmholtz.
+
+This file is kept only for historical comparison and is not used in final experiments.
+
+---
+
 FFT9 Algorithm - Complete Implementation
 =========================================
 
@@ -173,23 +183,23 @@ def fft9_fft_solver(n, f_func, bc_func, sx=1.0, sy=1.0, method='4th'):
         # For -Delta u = f with zero Dirichlet BC:
         #   u_hat_{p,q} = f_hat_{p,q} / ((p*pi)^2 + (q*pi)^2)
         #
-        # For non-zero BC, subtract the BC contribution from f first.
+        # For non-zero BC, move the known 5-point boundary values to the RHS.
         
         # Compute f at interior points, adjusted for BC
         F_int = F[1:-1, 1:-1].copy()
         
-        # BC contribution using 5-point stencil: f_adj = f - Lap_BC
-        # where Lap_BC accounts for the boundary values
+        # BC contribution using the positive 5-point -Laplacian stencil:
+        # known boundary values enter the RHS with a plus sign.
         bc_left = np.broadcast_to(bc_func(x[0], y), y.shape).astype(float)
         bc_right = np.broadcast_to(bc_func(x[-1], y), y.shape).astype(float)
         bc_bottom = np.broadcast_to(bc_func(x, y[0]), x.shape).astype(float)
         bc_top = np.broadcast_to(bc_func(x, y[-1]), x.shape).astype(float)
         
         F_adj = F_int.copy()
-        F_adj[0, :]  -= bc_left[1:-1] / h**2
-        F_adj[-1, :] -= bc_right[1:-1] / h**2
-        F_adj[:, 0]  -= bc_bottom[1:-1] / h**2
-        F_adj[:, -1] -= bc_top[1:-1] / h**2
+        F_adj[0, :]  += bc_left[1:-1] / h**2
+        F_adj[-1, :] += bc_right[1:-1] / h**2
+        F_adj[:, 0]  += bc_bottom[1:-1] / h**2
+        F_adj[:, -1] += bc_top[1:-1] / h**2
         
         # DST of adjusted f
         F_hat = np.zeros((N, N))
@@ -429,8 +439,8 @@ def poisson_5point_fft(n, f_func, bc_func, sx=1.0, sy=1.0):
     bc_b = np.broadcast_to(bc_func(x, y[0]), x.shape).astype(float)
     bc_t = np.broadcast_to(bc_func(x, y[-1]), x.shape).astype(float)
     F_adj = F[1:-1,1:-1].copy()
-    F_adj[0,:] -= bc_l[1:-1]/hx**2; F_adj[-1,:] -= bc_r[1:-1]/hx**2
-    F_adj[:,0] -= bc_b[1:-1]/hy**2; F_adj[:,-1] -= bc_t[1:-1]/hy**2
+    F_adj[0,:] += bc_l[1:-1]/hx**2; F_adj[-1,:] += bc_r[1:-1]/hx**2
+    F_adj[:,0] += bc_b[1:-1]/hy**2; F_adj[:,-1] += bc_t[1:-1]/hy**2
     F_hat = np.zeros((N,N))
     for i in range(N): F_hat[i,:] = dst(F_adj[i,:], type=1, norm='ortho')
     for j in range(N): F_hat[:,j] = dst(F_hat[:,j], type=1, norm='ortho')
