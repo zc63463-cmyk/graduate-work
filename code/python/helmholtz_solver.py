@@ -13,13 +13,16 @@ where sigma is the Helmholtz parameter:
                 (-nabla^2 - kappa^2) u = f,  sigma = -kappa^2
     sigma = 0 : Poisson equation  -nabla^2 u = f
 
-Supports Dirichlet, Neumann, and mixed boundary conditions.
+Supports Dirichlet, Neumann, and mixed boundary conditions for the five-point
+FA/CR/FACR-like solvers. The compact fourth-order FFT9 path is implemented and
+validated for Dirichlet boundary conditions only; non-Dirichlet FFT9 requests
+fall back to the second-order FA solver with a runtime warning.
 
 Methods:
     1. FA  (Fourier Analysis)    -- 2D DST/DCT, O(N^2 log N)
     2. CR  (Cyclic Reduction)    -- 1D transform + Thomas, O(N^2 log N)
     3. FACR(l)                   -- CR + FA hybrid
-    4. FFT9 (compact 4th-order)  -- 9-point stencil + DST/DCT
+    4. FFT9 (compact 4th-order)  -- 9-point stencil + DST-I (Dirichlet only)
     5. 5-point (2nd-order)       -- baseline for comparison
 
 When sigma=0, all solvers reduce to the Poisson equation solvers.
@@ -33,8 +36,10 @@ Grid conventions:
 
       Eigenvalues: lam_k = (2/h^2)(1 - cos(pi*k/(n-1))), k=0,...,n-1
       Symmetrization scaling: d_scale = [sqrt(2), 1, ..., 1, sqrt(2)]
-      RHS scaling:  F_tilde = h^2 * F / d_scale_x / d_scale_y
-      Solution:     U = U_tilde * d_scale_x * d_scale_y
+      RHS scaling:  F_tilde = D_x^{-1} F D_y^{-1}
+                   = F / d_scale_x / d_scale_y
+      Solution:     U = D_x U_tilde D_y
+                   = U_tilde * d_scale_x * d_scale_y
 
 Key references:
     - Strang (1999), "The Discrete Cosine Transform", SIAM Review
@@ -182,6 +187,11 @@ def _neumann_d_scale(n):
     The ghost-point Neumann matrix G is asymmetric. It can be symmetrized
     via D = diag(d_scale), giving S = D^{-1} G D which is diagonalized
     by DCT-I.
+
+    If G u = f, the transformed variables are u_tilde = D^{-1} u and
+    f_tilde = D^{-1} f. In 2D this becomes
+    U_tilde = D_x^{-1} U D_y^{-1} and
+    F_tilde = D_x^{-1} F D_y^{-1}.
     """
     d = np.ones(n)
     d[0] = np.sqrt(2.0)
@@ -241,8 +251,8 @@ def check_resonance(sigma, lam_x, lam_y, bc_x='D', bc_y='D', tol=1e-10):
 
     if is_resonant:
         # Distinguish: Poisson + Neumann zero mode (expected) vs true resonance
-        if sigma == 0.0 and (bc_x == 'N' or bc_y == 'N'):
-            # This is the expected zero mode for Neumann Poisson, not a resonance
+        if sigma == 0.0 and bc_x == 'N' and bc_y == 'N':
+            # This is the expected zero mode for pure Neumann Poisson, not a resonance
             pass  # Don't warn for expected zero mode
         elif sigma < 0:
             warnings.warn(
@@ -263,15 +273,21 @@ def check_neumann_compatibility(F_adj, h, bc_x, bc_y, sigma, tol=1e-8):
 
     For pure Neumann BC with sigma=0, the discrete Laplacian has a zero
     eigenvalue (constant mode). The system is solvable only if the
-    discrete compatibility condition is satisfied: sum(f * d_scale) ≈ 0.
+    trapezoid-weighted discrete compatibility condition is satisfied:
+        h^2 * sum(w_x[i] * w_y[j] * f[i,j]) ~= 0,
+    where endpoint weights are 1/2 and interior weights are 1.
 
     For sigma != 0, the (0,0) eigenvalue is sigma, so no compatibility
     issue arises (the system is non-singular as long as sigma != 0).
+    Mixed Dirichlet/Neumann Poisson problems also have no constant
+    nullspace because the Dirichlet direction removes it.
 
     Parameters
     ----------
     F_adj : ndarray
-        RHS array (already scaled by d_scale^{-1} if Neumann)
+        RHS array already scaled for the transform. For pure Neumann,
+        F_adj = D_x^{-1} F D_y^{-1}; the weighted integral is recovered
+        from the DCT-I zero-mode scaling.
     h : float
         Grid spacing
     bc_x, bc_y : str
@@ -286,36 +302,24 @@ def check_neumann_compatibility(F_adj, h, bc_x, bc_y, sigma, tol=1e-8):
     is_compatible : bool
         True if compatibility condition is satisfied
     mean_f : float
-        Discrete mean of f (weighted by d_scale and h^2)
+        Trapezoid-weighted discrete integral of the original physical RHS.
     """
     if sigma != 0.0:
         return True, 0.0  # Non-zero sigma: no compatibility issue
 
-    has_neumann = (bc_x == 'N' or bc_y == 'N')
-    if not has_neumann:
-        return True, 0.0  # No Neumann BC: no compatibility issue
+    if not (bc_x == 'N' and bc_y == 'N'):
+        return True, 0.0  # Only pure Neumann Poisson has a constant nullspace.
 
-    # For Neumann BC, F_adj is already divided by d_scale.
-    # The compatibility condition is: h^2 * sum(F_adj * d_scale_x * d_scale_y) ≈ 0
-    # Since F_adj = F / d_scale, we need: h^2 * sum(F) ≈ 0
-    # But F_adj = F / d_scale, so sum(F) = sum(F_adj * d_scale)
-    # The discrete integral is: h^2 * sum(F) = h^2 * sum(F_adj * d_scale)
-
-    if bc_x == 'N' and bc_y == 'N':
-        d_sx = _neumann_d_scale(F_adj.shape[0])
-        d_sy = _neumann_d_scale(F_adj.shape[1])
-        weighted_sum = np.sum(F_adj * d_sx[:, None] * d_sy[None, :])
-    elif bc_x == 'N':
-        d_sx = _neumann_d_scale(F_adj.shape[0])
-        weighted_sum = np.sum(F_adj * d_sx[:, None])
-    elif bc_y == 'N':
-        d_sy = _neumann_d_scale(F_adj.shape[1])
-        weighted_sum = np.sum(F_adj * d_sy[None, :])
-    else:
-        weighted_sum = np.sum(F_adj)
+    # For pure Neumann, F_adj = F / d_x / d_y. The DCT-I zero mode uses
+    # endpoint factors 1/d, so compatibility is proportional to
+    # sum(F_adj / d_x / d_y) = sum(F / d_x^2 / d_y^2), i.e. trapezoid weights.
+    d_sx = _neumann_d_scale(F_adj.shape[0])
+    d_sy = _neumann_d_scale(F_adj.shape[1])
+    weighted_sum = np.sum(F_adj / d_sx[:, None] / d_sy[None, :])
+    physical_rhs_scale = np.max(np.abs(F_adj * d_sx[:, None] * d_sy[None, :]))
 
     discrete_integral = h * h * weighted_sum
-    is_compatible = abs(discrete_integral) < tol * max(1.0, np.max(np.abs(F_adj)))
+    is_compatible = abs(discrete_integral) < tol * max(1.0, physical_rhs_scale)
 
     if not is_compatible:
         warnings.warn(
@@ -636,8 +640,8 @@ def fa_helmholtz(n, f_func, bc_func, k2=None, bc_type='dirichlet', sx=1.0, sy=1.
     # Check resonance
     check_resonance(sigma, lam_x, lam_y, bc_x, bc_y)
 
-    # Check Neumann Poisson compatibility condition
-    if sigma == 0.0 and (bc_x == 'N' or bc_y == 'N'):
+    # Check pure Neumann Poisson compatibility condition.
+    if sigma == 0.0 and bc_x == 'N' and bc_y == 'N':
         check_neumann_compatibility(F_adj, h, bc_x, bc_y, sigma)
 
     # 2D transform
@@ -693,6 +697,9 @@ def cr_helmholtz(n, f_func, bc_func, k2=None, bc_type='dirichlet', sx=1.0, sy=1.
     lam_x, _, _ = _get_eigenvalues(Nx, h, bc_x)
     lam_y, _, _ = _get_eigenvalues(Ny, h, bc_y)
     check_resonance(sigma, lam_x, lam_y, bc_x, bc_y)
+
+    if sigma == 0.0 and bc_x == 'N' and bc_y == 'N':
+        check_neumann_compatibility(F_adj, h, bc_x, bc_y, sigma)
 
     # 1D transform in x
     Fh = _transform_1d_x(F_adj, fwd_x)
@@ -774,6 +781,9 @@ def facr_helmholtz(n, f_func, bc_func, k2=None, bc_type='dirichlet', sx=1.0, sy=
     lam_x, _, _ = _get_eigenvalues(Nx, h, bc_x)
     lam_y, _, _ = _get_eigenvalues(Ny, h, bc_y)
     check_resonance(sigma, lam_x, lam_y, bc_x, bc_y)
+
+    if sigma == 0.0 and bc_x == 'N' and bc_y == 'N':
+        check_neumann_compatibility(F_adj, h, bc_x, bc_y, sigma)
 
     # Phase 1: 1D transform in x
     Fh = _transform_1d_x(F_adj, fwd_x)
@@ -909,20 +919,22 @@ def apply_Rh_full(G):
 
 def compute_bc_correction_9pt(n, bc_func, x, y, h, bc_x='D', bc_y='D', sigma=0.0):
     """
-    Compute BC correction for the FFT9 solver.
+    Compute the physical-space boundary correction for the FFT9 solver.
 
-    The thesis writes the compact system as
+    The compact system is written as
         (-L_h + sigma R_h) u = R_h f.
-    This implementation solves the equivalent system multiplied by -1:
-        ( L_h - sigma R_h) u = -R_h f.
+    After splitting interior unknowns and known Dirichlet boundary values,
+    the corrected RHS is
+        (R_h f)_I + L_IB g_B - sigma R_IB g_B.
 
-    Thus the original physical-space correction
-        + L_IB g_B - sigma R_IB g_B
-    appears in this function with the opposite sign:
-        - L_IB g_B + sigma R_IB g_B.
+    This implementation uses the same raw sign convention as the thesis.
+    An equivalent implementation could multiply the whole system by -1,
+    but then both the RHS and denominator must be sign-flipped together:
+        rhs_code = -(R_h f)_I - L_IB g_B + sigma R_IB g_B
+        denom_code = lambda_L - sigma lambda_R.
 
     Corner diagonal neighbors (coeff 1/(6h²) in L_h) are double-counted by
-    the x and y boundary loops; a correction is added back at the end.
+    the x and y boundary loops; one copy is removed at the end.
     R_h has no diagonal stencil entries, so no corner double-counting there.
     """
     N = n - 2
@@ -943,15 +955,15 @@ def compute_bc_correction_9pt(n, bc_func, x, y, h, bc_x='D', bc_y='D', sigma=0.0
             val_L = 4.0 * bc_l[jj]
             if jj - 1 >= 0: val_L += bc_l[jj - 1]
             if jj + 1 < n: val_L += bc_l[jj + 1]
-            bc_corr[0, j] -= coeff_L * val_L
+            bc_corr[0, j] += coeff_L * val_L
             # sigma R_h contribution: edge boundary neighbor only (1/12 coeff)
-            bc_corr[0, j] += sigma * coeff_R * bc_l[jj]
+            bc_corr[0, j] -= sigma * coeff_R * bc_l[jj]
 
             val_L = 4.0 * bc_r[jj]
             if jj - 1 >= 0: val_L += bc_r[jj - 1]
             if jj + 1 < n: val_L += bc_r[jj + 1]
-            bc_corr[N - 1, j] -= coeff_L * val_L
-            bc_corr[N - 1, j] += sigma * coeff_R * bc_r[jj]
+            bc_corr[N - 1, j] += coeff_L * val_L
+            bc_corr[N - 1, j] -= sigma * coeff_R * bc_r[jj]
 
     if bc_y == 'D':
         for i in range(N):
@@ -960,27 +972,27 @@ def compute_bc_correction_9pt(n, bc_func, x, y, h, bc_x='D', bc_y='D', sigma=0.0
             val_L = 4.0 * bc_b[ii]
             if ii - 1 >= 0: val_L += bc_b[ii - 1]
             if ii + 1 < n: val_L += bc_b[ii + 1]
-            bc_corr[i, 0] -= coeff_L * val_L
+            bc_corr[i, 0] += coeff_L * val_L
             # sigma R_h contribution
-            bc_corr[i, 0] += sigma * coeff_R * bc_b[ii]
+            bc_corr[i, 0] -= sigma * coeff_R * bc_b[ii]
 
             val_L = 4.0 * bc_t[ii]
             if ii - 1 >= 0: val_L += bc_t[ii - 1]
             if ii + 1 < n: val_L += bc_t[ii + 1]
-            bc_corr[i, N - 1] -= coeff_L * val_L
-            bc_corr[i, N - 1] += sigma * coeff_R * bc_t[ii]
+            bc_corr[i, N - 1] += coeff_L * val_L
+            bc_corr[i, N - 1] -= sigma * coeff_R * bc_t[ii]
 
     # Corner fix: diagonal boundary neighbors (coeff 1/(6h²) in L_h)
-    # were double-counted by both x and y loops. Add back one copy.
+    # were double-counted by both x and y boundary loops. Remove one copy.
     if bc_x == 'D' and bc_y == 'D':
         # Bottom-left: u(x[0], y[0]) affects interior (0,0)
-        bc_corr[0, 0] += coeff_L * bc_l[0]
+        bc_corr[0, 0] -= coeff_L * bc_l[0]
         # Top-left: u(x[0], y[-1]) affects interior (0,N-1)
-        bc_corr[0, N - 1] += coeff_L * bc_l[n - 1]
+        bc_corr[0, N - 1] -= coeff_L * bc_l[n - 1]
         # Bottom-right: u(x[-1], y[0]) affects interior (N-1,0)
-        bc_corr[N - 1, 0] += coeff_L * bc_r[0]
+        bc_corr[N - 1, 0] -= coeff_L * bc_r[0]
         # Top-right: u(x[-1], y[-1]) affects interior (N-1,N-1)
-        bc_corr[N - 1, N - 1] += coeff_L * bc_r[n - 1]
+        bc_corr[N - 1, N - 1] -= coeff_L * bc_r[n - 1]
 
     return bc_corr, bc_l, bc_r, bc_b, bc_t
 
@@ -991,7 +1003,6 @@ def fft9_helmholtz(n, f_func, bc_func, k2=None, bc_type='dirichlet',
     FFT9 solver for Helmholtz equation with 4th-order compact finite difference.
 
     Solves: (-L_h + sigma R_h) * u = R_h * f
-    Equivalently: (L_h - sigma R_h) * u = -R_h * f
 
     Use sigma for the unified framework, or k2 for backward compatibility.
 
@@ -1021,21 +1032,23 @@ def fft9_helmholtz(n, f_func, bc_func, k2=None, bc_type='dirichlet',
 
     F = np.asarray(f_func(X, Y), dtype=float)
 
-    # Apply R_h to g = -f
-    G = -F
-    Rg = apply_Rh_full(G)
+    # Build rhs_tilde = (R_h f)_I + L_IB g_B - sigma R_IB g_B.
+    # This is the thesis/raw system, paired with denominator
+    # -lambda_L + sigma*lambda_R below. Do not mix it with the
+    # equivalent all-sign-flipped system.
+    rhs_tilde = apply_Rh_full(F)
 
     # BC correction for L_h and sigma R_h
     bc_corr, bc_l, bc_r, bc_b, bc_t = compute_bc_correction_9pt(
         n, bc_func, x, y, h, bc_x, bc_y, sigma)
-    Rg += bc_corr
+    rhs_tilde += bc_corr
 
     # Get transforms
     fwd_x, inv_x, _ = _get_transform(bc_x, 'x')
     fwd_y, inv_y, _ = _get_transform(bc_y, 'y')
 
     # 2D transform
-    Rg_hat = _transform_2d(Rg, fwd_x, fwd_y)
+    rhs_hat = _transform_2d(rhs_tilde, fwd_x, fwd_y)
 
     if method == '4th':
         k_vals = np.arange(1, N + 1)
@@ -1045,13 +1058,14 @@ def fft9_helmholtz(n, f_func, bc_func, k2=None, bc_type='dirichlet',
 
         lam_L = (1.0 / (6.0 * h**2)) * (-20.0 + 8.0 * CK + 8.0 * CL + 4.0 * CK * CL)
         lam_R4 = 2.0 / 3.0 + (1.0 / 6.0) * (CK + CL)
-        # Denom for the equivalent system (L_h - sigma R_h);
-        # Rg already contains -R_h f plus the corresponding boundary correction.
-        denom = lam_L - sigma * lam_R4
+        # L_h approximates +Delta, so lam_L is negative on Dirichlet
+        # nonzero modes. Since rhs_tilde already contains R_h f, use the
+        # raw denominator for (-L_h + sigma R_h).
+        denom = -lam_L + sigma * lam_R4
 
         U_hat = np.zeros((N, N))
         mask = np.abs(denom) > 1e-14
-        U_hat[mask] = Rg_hat[mask] / denom[mask]
+        U_hat[mask] = rhs_hat[mask] / denom[mask]
 
     elif method == 'spectral':
         F_int = F[1:-1, 1:-1].copy()
@@ -1110,18 +1124,20 @@ def fft9_oer_helmholtz(n, f_func, bc_func, k2=None, bc_type='dirichlet', sx=1.0,
 
     F = np.asarray(f_func(X, Y), dtype=float)
 
-    # Apply R_h to g = -f
-    G = -F
-    Rg = apply_Rh_full(G)
+    # Build rhs_tilde = (R_h f)_I + L_IB g_B - sigma R_IB g_B.
+    # This is the thesis/raw system, paired with the (-L_h + sigma R_h)
+    # block coefficients below. If using the all-sign-flipped system, the
+    # RHS and all block coefficients must be flipped together.
+    rhs_tilde = apply_Rh_full(F)
 
     # BC correction
     bc_corr, bc_l, bc_r, bc_b, bc_t = compute_bc_correction_9pt(
         n, bc_func, x, y, h, bc_x, bc_y, sigma)
-    Rg += bc_corr
+    rhs_tilde += bc_corr
 
     # 1D transform in x
     fwd_x, inv_x, _ = _get_transform(bc_x, 'x')
-    Rg_hat = _transform_1d_x(Rg, fwd_x)
+    rhs_hat = _transform_1d_x(rhs_tilde, fwd_x)
 
     # Eigenvalues of D and A_sub (9-point Laplacian blocks)
     k_vals = np.arange(1, N + 1)
@@ -1134,16 +1150,16 @@ def fft9_oer_helmholtz(n, f_func, bc_func, k2=None, bc_type='dirichlet', sx=1.0,
     lam_DR = 2.0 / 3.0 + cos_k / 6.0
     lam_AR = 1.0 / 12.0
 
-    # Helmholtz: (L_h - sigma R_h) per mode
-    lam_A_helm = lam_A - sigma * lam_AR
-    lam_D_helm = lam_D - sigma * lam_DR
+    # Helmholtz: (-L_h + sigma R_h) per mode.
+    lam_A_helm = -lam_A + sigma * lam_AR
+    lam_D_helm = -lam_D + sigma * lam_DR
 
     # Thomas for each mode
     u_hat = np.zeros((N, N))
     for p in range(N):
         a = lam_A_helm[p]
         d = lam_D_helm[p]
-        b = Rg_hat[p, :].copy()
+        b = rhs_hat[p, :].copy()
         u_hat[p, :] = thomas(a, d, b)
 
     # Inverse transform in x

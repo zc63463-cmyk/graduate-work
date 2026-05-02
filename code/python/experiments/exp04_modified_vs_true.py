@@ -16,17 +16,25 @@ Usage (from project root):
 """
 import numpy as np
 import pandas as pd
-import os, sys, time
+import os, sys, time, argparse, shutil
 
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), '..')))
 
 from helmholtz_solver import fa_helmholtz, cr_helmholtz, facr_helmholtz, fft9_helmholtz
 from gmres_solver import gmres_helmholtz
-from .utils import (
-    test_problem_dirichlet, test_problem_dirichlet_mode,
-    test_problem_gaussian_rhs,
-    equation_type, get_results_dir, get_figures_dir
-)
+from gmres_solver import build_helmholtz_matrix, _build_rhs, gmres
+try:
+    from .utils import (
+        test_problem_dirichlet, test_problem_dirichlet_mode,
+        test_problem_gaussian_rhs,
+        equation_type, get_results_dir, get_figures_dir
+    )
+except ImportError:  # Support direct execution with PYTHONPATH=code/python.
+    from experiments.utils import (
+        test_problem_dirichlet, test_problem_dirichlet_mode,
+        test_problem_gaussian_rhs,
+        equation_type, get_results_dir, get_figures_dir
+    )
 
 # ============================================================
 # Parameters
@@ -36,9 +44,29 @@ sigma_modified = [1, 10, 100, 1000]
 sigma_true_safe = [-1, -5, -10]
 sigma_true_near = [-50]  # near lambda_{2,1} = 5*pi^2 ≈ 49.3
 
+PATCH4_CONDITION_CSV = "exp04_condition_check.csv"
+PATCH4_HISTORY_CSV = "exp04_gmres_history.csv"
+PATCH4_CONDITION_FIG = "exp04_condition_check"
+PATCH4_HISTORY_FIG = "exp04_gmres_history"
+PATCH4_HISTORY_SIGMAS = [10, 1000, -10, -50]
+PATCH4_HISTORY_N = 129
+PATCH4_RESTART = 30
+PATCH4_TOL = 1e-10
+PATCH4_MAX_ITER = 500
+
 
 def compute_spectral_indicators(n, sigma, bc_type='dirichlet'):
-    """Compute min_denominator and spectral condition indicator."""
+    """Compute min_denominator and spectral condition indicator.
+
+    For the Dirichlet five-point discretization, DST-I orthogonally
+    diagonalizes A = Q.T @ diag(d_pq) @ Q. Hence, for nonsingular A,
+    cond_2(A) = max(abs(d_pq)) / min(abs(d_pq)).
+
+    This equivalence relies on orthogonal diagonalization / symmetric normal
+    structure. Do not treat this denominator indicator as cond_2(A) for the
+    original nonsymmetric Neumann ghost-point matrix, mixed-boundary systems,
+    non-orthogonal diagonalizations, or general non-normal matrices.
+    """
     
     if bc_type == 'dirichlet':
         N = n - 2
@@ -60,6 +88,39 @@ def compute_spectral_indicators(n, sigma, bc_type='dirichlet'):
     spectral_indicator = max_denom / min_denom if min_denom > 1e-15 else np.inf
     
     return min_denom, spectral_indicator, D
+
+
+def dirichlet_denominator_grid(n, sigma):
+    """Return Dirichlet five-point eigenvalues and denominators."""
+    N = n - 2
+    h = 1.0 / (n - 1)
+    modes = np.arange(1, N + 1)
+    mu = 2.0 - 2.0 * np.cos(modes * np.pi / (N + 1))
+    lambdas = np.add.outer(mu, mu) / h**2
+    denominators = lambdas + sigma
+    return modes, lambdas, denominators, h
+
+
+def denominator_summary(n, sigma):
+    """Compute spectral denominator summary for the Dirichlet five-point system."""
+    modes, lambdas, denominators, h = dirichlet_denominator_grid(n, sigma)
+    abs_d = np.abs(denominators)
+    idx = np.unravel_index(np.argmin(abs_d), abs_d.shape)
+    d_min_abs = float(abs_d[idx])
+    d_max_abs = float(np.max(abs_d))
+    indicator = d_max_abs / d_min_abs if d_min_abs > 0 else np.inf
+    return {
+        "N": n - 2,
+        "h": h,
+        "lambda_min": float(np.min(lambdas)),
+        "lambda_max": float(np.max(lambdas)),
+        "d_min_abs": d_min_abs,
+        "d_max_abs": d_max_abs,
+        "nearest_p": int(idx[0] + 1),
+        "nearest_q": int(idx[1] + 1),
+        "nearest_lambda": float(lambdas[idx]),
+        "spectral_indicator": indicator,
+    }
 
 
 def _gmres_solve(n, f_rhs, bc_func, sigma, bc_type='dirichlet'):
@@ -333,16 +394,45 @@ def plot(df=None, figures_dir=None):
     df_plot = df[df['gmres_iters'] > 0].copy()
     if len(df_plot) > 0:
         plt.figure(figsize=(10, 6))
-        for eq_type in df_plot['equation_type'].unique():
+        from matplotlib.lines import Line2D
+
+        line_handles = []
+        capped_handle_added = False
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+        for idx, eq_type in enumerate(df_plot['equation_type'].unique()):
             sub = df_plot[df_plot['equation_type'] == eq_type]
             n_max = sub['n'].max()
             sub = sub[sub['n'] == n_max].sort_values('sigma')
             if len(sub) > 0:
-                plt.plot(sub['sigma'], sub['gmres_iters'], 'o-', label=f'{eq_type} (n={n_max})')
+                color = colors[idx % len(colors)]
+                success = sub['gmres_success'].astype(str).str.lower().eq('true')
+                capped = (~success) | sub['status'].isin(['failed', 'near_resonance'])
+
+                plt.plot(sub['sigma'], sub['gmres_iters'], '-', color=color, lw=1.8)
+                plt.scatter(sub.loc[~capped, 'sigma'], sub.loc[~capped, 'gmres_iters'],
+                            marker='o', s=46, color=color, edgecolor='white', zorder=3)
+                if capped.any():
+                    label = 'capped / not converged' if not capped_handle_added else None
+                    plt.scatter(sub.loc[capped, 'sigma'], sub.loc[capped, 'gmres_iters'],
+                                marker='x', s=80, color='red', linewidths=2.0,
+                                zorder=4, label=label)
+                    capped_handle_added = True
+
+                line_handles.append(Line2D([0], [0], color=color, lw=1.8,
+                                           label=f'{eq_type} (n={n_max})'))
+        cap_line = plt.axhline(501, color='0.35', lw=1.0, ls='--',
+                               label='501 = capped under max_iter=500')
         plt.xscale('symlog')
         plt.xlabel('sigma')
         plt.ylabel('GMRES iterations')
-        plt.legend()
+        status_handles = [
+            Line2D([0], [0], marker='o', linestyle='None', markerfacecolor='0.3',
+                   markeredgecolor='white', markersize=7, label='converged'),
+            Line2D([0], [0], marker='x', linestyle='None', color='red',
+                   markersize=8, markeredgewidth=2.0, label='capped / not converged'),
+            cap_line,
+        ]
+        plt.legend(handles=line_handles + status_handles, fontsize=9)
         plt.grid(True, which='both', ls='--', alpha=0.5)
         plt.title('exp04: GMRES iterations vs sigma (Gaussian RHS, non-eigenfunction)')
         plt.tight_layout()
@@ -353,6 +443,287 @@ def plot(df=None, figures_dir=None):
     return df
 
 
+def _copy_to_thesis(figures_dir, filenames):
+    thesis_figures = os.path.normpath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "..", "thesis", "figures")
+    )
+    os.makedirs(thesis_figures, exist_ok=True)
+    copied = []
+    for name in filenames:
+        src = os.path.join(figures_dir, name)
+        dst = os.path.join(thesis_figures, name)
+        shutil.copy2(src, dst)
+        copied.append(dst)
+    return copied
+
+
+def run_condition_check():
+    """Dense cond_2 check for the Dirichlet five-point spectral indicator.
+
+    This check verifies a special orthogonally diagonalized symmetric system;
+    it is not a claim about Neumann ghost-point, mixed-boundary, or non-normal
+    matrices.
+    """
+    results_dir = get_results_dir()
+    figures_dir = get_figures_dir()
+    os.makedirs(results_dir, exist_ok=True)
+    os.makedirs(figures_dir, exist_ok=True)
+
+    rows = []
+    n_list_dense = [17, 33]
+    sigma_list = [-50, -10, -5, -1, 1, 10, 100, 1000]
+    for n in n_list_dense:
+        for sigma in sigma_list:
+            A, _ = build_helmholtz_matrix(n, sigma=sigma, bc_type="dirichlet")
+            dense_cond2 = float(np.linalg.cond(A.toarray(), 2))
+            summary = denominator_summary(n, sigma)
+            spectral_indicator = summary["spectral_indicator"]
+            rel_diff = abs(dense_cond2 - spectral_indicator) / dense_cond2
+            rows.append({
+                "n": n,
+                "N": summary["N"],
+                "h": summary["h"],
+                "sigma": sigma,
+                "equation_type": equation_type(sigma),
+                "lambda_min": summary["lambda_min"],
+                "lambda_max": summary["lambda_max"],
+                "d_min_abs": summary["d_min_abs"],
+                "d_max_abs": summary["d_max_abs"],
+                "nearest_p": summary["nearest_p"],
+                "nearest_q": summary["nearest_q"],
+                "nearest_lambda": summary["nearest_lambda"],
+                "spectral_indicator": spectral_indicator,
+                "dense_cond2": dense_cond2,
+                "relative_difference": rel_diff,
+            })
+
+    df = pd.DataFrame(rows)
+    csv_path = os.path.join(results_dir, PATCH4_CONDITION_CSV)
+    df.to_csv(csv_path, index=False)
+
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(6.4, 5.4))
+    markers = {17: "o", 33: "s"}
+    for n in n_list_dense:
+        sub = df[df["n"] == n]
+        ax.scatter(
+            sub["spectral_indicator"],
+            sub["dense_cond2"],
+            marker=markers[n],
+            s=48,
+            alpha=0.85,
+            label=f"n={n}",
+        )
+    lo = min(df["spectral_indicator"].min(), df["dense_cond2"].min())
+    hi = max(df["spectral_indicator"].max(), df["dense_cond2"].max())
+    ax.plot([lo, hi], [lo, hi], "k--", lw=1.2, label="y=x")
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel("spectral denominator indicator")
+    ax.set_ylabel(r"dense $\mathrm{cond}_2(A)$")
+    ax.set_title("exp04 condition check: DST denominator vs dense cond2")
+    ax.grid(True, which="both", ls="--", alpha=0.35)
+    ax.legend(fontsize=9)
+    fig.tight_layout()
+
+    png = os.path.join(figures_dir, f"{PATCH4_CONDITION_FIG}.png")
+    pdf = os.path.join(figures_dir, f"{PATCH4_CONDITION_FIG}.pdf")
+    fig.savefig(png, dpi=180, bbox_inches="tight")
+    fig.savefig(pdf, bbox_inches="tight")
+    plt.close(fig)
+    _copy_to_thesis(figures_dir, [f"{PATCH4_CONDITION_FIG}.png", f"{PATCH4_CONDITION_FIG}.pdf"])
+    print(f"Condition check CSV saved to: {csv_path}")
+    print(f"Condition check figures saved to: {png}, {pdf}")
+    return df
+
+
+def _filter_gmres_residuals(residuals, restart, reported_iterations, max_iter):
+    """Remove restart-boundary recomputed residuals from gmres() history."""
+    filtered = []
+    for idx, value in enumerate(residuals):
+        if idx > 0 and idx % (restart + 1) == 0:
+            continue
+        filtered.append(float(value))
+
+    max_reported = min(reported_iterations, max_iter)
+    if len(filtered) > max_reported + 1:
+        filtered = filtered[:max_reported + 1]
+
+    rows = [(i, value) for i, value in enumerate(filtered)]
+    if reported_iterations > max_iter and rows[-1][0] != reported_iterations:
+        rows.append((reported_iterations, rows[-1][1]))
+    return rows
+
+
+def run_gmres_history():
+    """Generate per-iteration GMRES residual histories for representative sigma."""
+    results_dir = get_results_dir()
+    figures_dir = get_figures_dir()
+    os.makedirs(results_dir, exist_ok=True)
+    os.makedirs(figures_dir, exist_ok=True)
+
+    _, f_gaussian, bc_zero = test_problem_gaussian_rhs(0.0)
+    rows = []
+    for sigma in PATCH4_HISTORY_SIGMAS:
+        A, grid_info = build_helmholtz_matrix(
+            PATCH4_HISTORY_N,
+            sigma=sigma,
+            bc_type="dirichlet",
+        )
+        b = _build_rhs(
+            PATCH4_HISTORY_N,
+            f_gaussian,
+            bc_zero,
+            sigma,
+            grid_info["bc_x"],
+            grid_info["bc_y"],
+        )
+        _, info = gmres(
+            A,
+            b,
+            tol=PATCH4_TOL,
+            max_iter=PATCH4_MAX_ITER,
+            restart=PATCH4_RESTART,
+            return_history=True,
+        )
+        summary = denominator_summary(PATCH4_HISTORY_N, sigma)
+        success = bool(info["success"])
+        if success:
+            status = "ok"
+        elif sigma < 0 and summary["d_min_abs"] < 1.0:
+            status = "near_resonance"
+        else:
+            status = "failed"
+
+        norm_b = np.linalg.norm(b)
+        residual_rows = _filter_gmres_residuals(
+            info["residuals"],
+            PATCH4_RESTART,
+            int(info["iterations"]),
+            PATCH4_MAX_ITER,
+        )
+        final_abs = float(info["final_abs_residual"])
+        final_rel = float(info["final_relative_residual"])
+        for iteration, abs_residual in residual_rows:
+            rel_residual = abs_residual / norm_b if norm_b > 0 else np.inf
+            rows.append({
+                "sigma": sigma,
+                "equation_type": equation_type(sigma),
+                "n": PATCH4_HISTORY_N,
+                "N": PATCH4_HISTORY_N - 2,
+                "iteration": iteration,
+                "restart": PATCH4_RESTART,
+                "restart_cycle": iteration // PATCH4_RESTART,
+                "abs_residual": abs_residual,
+                "rel_residual": rel_residual,
+                "gmres_success": success,
+                "status": status,
+                "tol": PATCH4_TOL,
+                "tol_type": "absolute_residual",
+                "max_iter": PATCH4_MAX_ITER,
+                "final_abs_residual": final_abs,
+                "final_rel_residual": final_rel,
+            })
+
+    df = pd.DataFrame(rows)
+    csv_path = os.path.join(results_dir, PATCH4_HISTORY_CSV)
+    df.to_csv(csv_path, index=False)
+
+    plot_gmres_history(df, figures_dir)
+    print(f"GMRES history CSV saved to: {csv_path}")
+    return df
+
+
+def plot_gmres_history(df, figures_dir):
+    """Plot absolute and relative residual history for exp04."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
+
+    fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.8), constrained_layout=True)
+    colors = {
+        10: "#1f77b4",
+        1000: "#2ca02c",
+        -10: "#ff7f0e",
+        -50: "#d62728",
+    }
+
+    for sigma in PATCH4_HISTORY_SIGMAS:
+        sub = df[df["sigma"] == sigma].sort_values("iteration")
+        if sub.empty:
+            continue
+        success = bool(sub["gmres_success"].iloc[-1])
+        status = str(sub["status"].iloc[-1])
+        label = f"sigma={sigma:+g}"
+        if not success:
+            label += f" ({status})"
+        color = colors[sigma]
+        axes[0].plot(sub["iteration"], sub["abs_residual"], color=color, lw=1.8, label=label)
+        axes[1].plot(sub["iteration"], sub["rel_residual"], color=color, lw=1.8, label=label)
+        if not success:
+            for ax, col in [(axes[0], "abs_residual"), (axes[1], "rel_residual")]:
+                ax.scatter(
+                    sub["iteration"].iloc[-1],
+                    sub[col].iloc[-1],
+                    marker="x",
+                    s=70,
+                    color="red",
+                    linewidths=2.0,
+                    zorder=4,
+                )
+
+    axes[0].axhline(PATCH4_TOL, color="0.2", lw=1.1, ls="--", label="absolute tolerance")
+    axes[0].set_title("(a) Absolute residual history")
+    axes[0].set_xlabel("iteration")
+    axes[0].set_ylabel("absolute residual")
+    axes[1].set_title("(b) Relative residual history")
+    axes[1].set_xlabel("iteration")
+    axes[1].set_ylabel("relative residual")
+    for ax in axes:
+        ax.set_yscale("log")
+        ax.grid(True, which="both", ls="--", alpha=0.35)
+    axes[1].legend(fontsize=8, loc="best")
+    axes[0].legend(fontsize=8, loc="best")
+
+    capped_handle = Line2D([0], [0], marker="x", linestyle="None", color="red",
+                           markersize=8, markeredgewidth=2.0,
+                           label="capped / not converged marker")
+    handles, labels = axes[1].get_legend_handles_labels()
+    if "capped / not converged marker" not in labels:
+        handles.append(capped_handle)
+        labels.append("capped / not converged marker")
+        axes[1].legend(handles, labels, fontsize=8, loc="best")
+
+    png = os.path.join(figures_dir, f"{PATCH4_HISTORY_FIG}.png")
+    pdf = os.path.join(figures_dir, f"{PATCH4_HISTORY_FIG}.pdf")
+    fig.savefig(png, dpi=180, bbox_inches="tight")
+    fig.savefig(pdf, bbox_inches="tight")
+    plt.close(fig)
+    _copy_to_thesis(figures_dir, [f"{PATCH4_HISTORY_FIG}.png", f"{PATCH4_HISTORY_FIG}.pdf"])
+    print(f"GMRES history figures saved to: {png}, {pdf}")
+
+
+def run_patch4_outputs():
+    """Generate Patch4 supplemental condition and residual-history outputs."""
+    condition_df = run_condition_check()
+    history_df = run_gmres_history()
+    return condition_df, history_df
+
+
 if __name__ == '__main__':
-    df = run()
-    print("\nexp04 completed.")
+    parser = argparse.ArgumentParser(description="Run exp04 or Patch4 supplemental outputs.")
+    parser.add_argument(
+        "--regenerate-main",
+        action="store_true",
+        help="Also regenerate historical exp04_modified_vs_true.csv and legacy figures.",
+    )
+    args = parser.parse_args()
+    if args.regenerate_main:
+        df = run()
+        print("\nexp04 main experiment completed.")
+    run_patch4_outputs()
+    print("\nexp04 Patch4 outputs completed.")

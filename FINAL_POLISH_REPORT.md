@@ -1,19 +1,19 @@
 # Final Polish Report
 
-**项目**：矩形区域上 Poisson/Helmholtz 方程的 FFT 快速求解器与迭代法对比研究  
-**日期**：2026-04-29  
-**版本**：V2.3，实验章节删减收束与交付一致性清理版  
-**当前分支**：`revise-sigma-fft9-krylov`  
-**最终 PDF**：`thesis/main.pdf`，56 pages
+**项目**：矩形区域上 Poisson/Helmholtz 方程的 FFT 快速求解器与迭代法对比研究
+**日期**：2026-04-29
+**版本**：V2.4，五核心实验终局整理版
+**当前分支**：`revise-sigma-fft9-krylov`
+**最终 PDF**：`thesis/main.pdf`，66 pages
 **最终状态**：READY TO SUBMIT
 
 ---
 
 ## 1. 总体结论
 
-本轮清理的核心是把第 6 章从旧版 16 个历史实验收束为 6 个有脚本、CSV、图表和正文结论支撑的核心实验，并同步收紧摘要、引言、算法章节、GMRES 章节、结论和 Lean 附录的表述边界。
+本轮清理的核心是把第 6 章从旧版 16 个历史实验和后续补丁式扩展整理为 5 个有脚本、CSV、图表和正文结论支撑的核心实验；`exp00` 降级为 implementation validation，并同步收紧摘要、引言、结论和实验总结的表述边界。
 
-当前论文主线已经稳定为：在统一的 $(-\Delta+\sigma)u=f$ 框架下，验证规则矩形区域上 FFT 快速直接法的离散正确性、收敛阶和边界处理，并通过 modified/true Helmholtz 的谱指标与 near-resonance 实验观察 $\sigma$ 符号对求解难度的影响。
+当前论文主线已经稳定为：在统一的 $(-\Delta+\sigma)u=f$ 框架下，验证规则矩形区域上 FFT 快速直接法的收敛阶、边界处理和精度--成本表现，并通过 modified/true Helmholtz 的谱结构、GMRES 残差历史与 near-resonance 模态投影观察 $\sigma$ 符号对求解难度的影响。
 
 论文不再声称完成大范围系统性能比较、完整预处理迭代法研究、FFT9 的 Neumann/mixed 四阶推广，或 Lean 4 的完整 PDE 全局误差证明。
 
@@ -95,7 +95,7 @@ xelatex -interaction=nonstopmode main.tex
 结果：
 
 ```text
-Output written on main.pdf (56 pages).
+Output written on main.pdf (66 pages).
 0 LaTeX error
 0 undefined citation/reference
 0 multiply defined label
@@ -111,34 +111,34 @@ PDF 已用 `pdftoppm` 渲染第 6 章关键页和附录表 11 所在页目检：
 
 ## 3. 第 6 章实验闭环
 
-第 6 章当前只保留 6 个核心实验：
+第 6 章当前整理为 5 个核心实验；`exp00` 作为 implementation validation 保留在 6.1，不再作为核心实验编号：
 
 | 实验 | 支撑脚本 | CSV | 图像/表格 |
 |------|----------|-----|-----------|
-| 实验一：FFT 解与 sparse direct 解的一致性 | `exp00_fft_vs_sparse.py` | `exp00_fft_vs_sparse.csv` | 正文表格 |
-| 实验二：二阶与四阶收敛阶验证 | `exp01_convergence.py` | `exp01_convergence.csv` | `exp01_convergence.png` |
-| 实验三：非齐次 Dirichlet 边界验证 | `exp02_nonhom_bc.py` | `exp02_nonhom_bc.csv` | `exp02_nonhom_bc.png` |
-| 实验四：Neumann 与 mixed 边界验证 | `exp03_neumann_mixed.py` | `exp03_neumann_mixed.csv` | `exp03_neumann_mixed.png` |
-| 实验五：modified/true Helmholtz 谱指标与 Gaussian RHS 下 GMRES 行为 | `exp04_modified_vs_true.py` | `exp04_modified_vs_true.csv` | `exp04_min_denom_vs_sigma.png`, `exp04_spectral_indicator_vs_sigma.png`, `exp04_gmres_iters_vs_sigma.png` |
-| 实验六：true Helmholtz near-resonance 扫描 | `exp05_true_helmholtz_resonance.py` | `exp05_resonance.csv` | `exp05_resonance.png` |
+| 实验一：Dirichlet 离散格式收敛性验证 | `exp01_convergence.py`, `exp02_nonhom_bc.py` | `exp01_convergence.csv`, `exp02_nonhom_bc.csv` | `exp01_convergence.png`, `exp02_nonhom_bc.png`, nonhom/multimode 可视化 |
+| 实验二：Neumann 与 mixed 边界处理 | `exp03_neumann_mixed.py` | `exp03_neumann_mixed.csv` | `exp03_neumann_mixed_summary.png`, `exp03_neumann_mixed_fields.png` |
+| 实验三：精度--成本对比与复杂度实证 | `exp06_accuracy_cost.py` | `exp06_accuracy_cost.csv` | `exp06_accuracy_cost_error_time.png`, `exp06_time_scaling.png` |
+| 实验四：Modified/True Helmholtz 的谱结构与 GMRES 行为 | `exp07_spectral_denominator_maps.py`, `exp04_modified_vs_true.py` | `exp07_spectral_denominator_summary.csv`, `exp04_modified_vs_true.csv`, `exp04_condition_check.csv`, `exp04_gmres_history.csv` | `exp07_spectral_denominator_heatmaps.png`, `exp04_*` |
+| 实验五：True Helmholtz 近共振模态放大 | `exp05_true_helmholtz_resonance.py` | `exp05_resonance.csv`, `exp05_multimode_resonance.csv`, `exp05_resonance_gmres_history.csv` | `exp05_near_resonance_summary.png`, `exp05_multimode_resonance_summary.png`, `exp05_dominant_mode_projection.png`, `exp05_resonance_gmres_history.png` |
 
-当前保留四张可视化补充图：
+当前保留五张可视化补充图：
 
 - `exp02_temperature_field_comparison.png`：用于展示非齐次 Dirichlet 温度场空间结构，不替代收敛阶证据。
-- `exp05_denominator_heatmap.png`：用于展示 true Helmholtz 近共振分母模态分布，不构成新增实验。
+- `exp03_neumann_mixed_fields.png`：用于展示 Neumann/mixed 边界代表性解场和误差分布，不替代收敛阶与边界残差证据。
+- `exp05_denominator_heatmap.png`：用于展示 true Helmholtz 近共振分母模态分布，保留为备份可视化，不构成新增实验。
 - `exp06_complex_manufactured_fields.png`：用于展示多模态 manufactured solution 的解析场、FA/FFT9 数值解与误差分布。
 - `exp06_complex_manufactured_convergence.png`：用于展示同一多模态补充问题中 FA 二阶与 FFT9 四阶收敛。
 
-这些补充图不改变第 6 章 6 个核心实验结构，不新增“实验七”。
+这些补充图已并入对应核心实验的小节中，不新增“实验七”。
 
 每个实验均补充或保留了结论边界：
 
-- 实验一证明离散 FFT-vs-sparse 一致性，不证明连续 PDE 收敛阶。
-- 实验二验证收敛轨道，不用于判断 GMRES 行为。
-- 实验三验证非齐次 Dirichlet RHS/边界处理，不涉及 Neumann/mixed 九点紧致推广。
-- 实验四验证受支持五点求解器的 Neumann/mixed 处理，不证明 FFT9 Neumann/mixed 四阶性。
-- 实验五观察 Gaussian RHS 下无预处理 GMRES 的参数敏感性，不构成完整迭代法性能研究。
-- 实验六只支持 true Helmholtz near-resonance 结论，不外推为一般波数性能比较。
+- exp00 只证明离散 FFT-vs-sparse 一致性，不证明连续 PDE 收敛阶。
+- 实验一验证 Dirichlet 收敛轨道；非齐次 Dirichlet 和多模态图作为 visual sanity check。
+- 实验二验证受支持五点求解器的 Neumann/mixed 边界处理，不证明 FFT9 Neumann/mixed 四阶性。
+- 实验三展示当前实现下的误差--时间趋势，不是严格 kernel-to-kernel benchmark。
+- 实验四观察 Gaussian RHS 下无预处理 GMRES 的参数敏感性，不构成完整迭代法性能研究。
+- 实验五只支持离散谱 near-resonance 模态放大结论，不外推为连续谱极限或一般波数性能比较。
 
 旧版“实验七”至“实验十六”的结构、弱支撑图表和大范围性能比较表述未在正文中保留。
 
@@ -151,9 +151,9 @@ PDF 已用 `pdftoppm` 渲染第 6 章关键页和附录表 11 所在页目检：
 - 引言中明确：FA、CR、FACR-like 与五点基准覆盖 Dirichlet、Neumann 和 mixed；FFT9 仅针对 Dirichlet 边界实现并验证。
 - FACR 复杂度表述已区分：当前 FACR-like 实现为 $O(N^2\log N)$；经典 FACR 的 $O(N^2\log\log N)$ 仅作为理论背景。
 - GMRES 已限定为无预处理 Krylov 基线；true Helmholtz 近共振处改为“可能停滞或依赖参数/预处理”的保守表述。
-- 第 6 章所有实验改为 6 个核心闭环，并加入“不证明什么”的限制句。
+- 第 6 章所有实验改为 5 个核心闭环，并加入“不证明什么”的限制句。
 - Lean 附录表 11 改为固定在 `\textwidth` 内，移除 emoji glyph，避免 PDF 右侧越界。
-- README 已创建为最终交付包说明，记录 56 页 PDF、6 个核心实验、exp00-exp05 核心 CSV、7 张核心 PNG、1 个多模态补充 CSV 与 4 张可视化补充 PNG。
+- README 已同步为最终交付包说明，记录 62 页 PDF、5 个核心实验，并说明 exp00 为 implementation validation。
 
 ### 代码与数据
 

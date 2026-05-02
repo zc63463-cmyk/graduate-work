@@ -7,13 +7,11 @@ Verifies that the FFT9 (4th-order compact) solver produces the same
 discrete solution as solving the compact sparse system directly.
 
 The FFT9 solver internally solves:
-    (L_h - sigma * R_h) * u = -(R_h * f) + bc_correction
+    (-L_h + sigma * R_h) * u = R_h * f + bc_correction
 
 where L_h is the 9-point Laplacian and R_h is the averaging operator.
-This is equivalent to:
-    (-L_h + sigma * R_h) * u = R_h * f
 
-We build the sparse matrix for (L_h - sigma * R_h) and the matching RHS,
+We build the sparse matrix for (-L_h + sigma * R_h) and the matching RHS,
 then compare with the FFT9 frequency-domain solver.
 
 Acceptance: ||u_fft9 - u_spsolve||_inf <= 1e-10
@@ -37,7 +35,7 @@ def _build_fft9_compact_system(n, f_func, bc_func, sigma=0.0, sx=1.0, sy=1.0):
     """
     Build the FFT9 compact sparse system matching the solver formulation:
 
-        (L_h - sigma * R_h) * u_int = -(R_h * f) + bc_correction
+        (-L_h + sigma * R_h) * u_int = (R_h * f) + bc_correction
 
     This is exactly what the FFT9 solver computes in the frequency domain.
 
@@ -53,28 +51,27 @@ def _build_fft9_compact_system(n, f_func, bc_func, sigma=0.0, sx=1.0, sy=1.0):
     # Evaluate f on full grid
     F = np.asarray(f_func(X, Y), dtype=float)
 
-    # Apply R_h to g = -f (matching solver: Rg = R_h * (-f))
-    G = -F
-    Rg = apply_Rh_full(G)  # shape (N, N)
+    # Apply R_h to f (matching solver: rhs_tilde = R_h f + correction)
+    rhs_tilde = apply_Rh_full(F)  # shape (N, N)
 
     # Boundary correction (from the solver's own function)
     bc_corr, _, _, _, _ = compute_bc_correction_9pt(
         n, bc_func, x, y, h, bc_x='D', bc_y='D', sigma=sigma)
-    Rg += bc_corr
+    rhs_tilde += bc_corr
 
-    # Build sparse matrix for (L_h - sigma * R_h)
+    # Build sparse matrix for (-L_h + sigma * R_h)
     # L_h stencil: (1/(6h²)) * [1 4 1; 4 -20 4; 1 4 1]
     # R_h stencil: [0 1/12 0; 1/12 2/3 1/12; 0 1/12 0]
-    # Combined (L_h - sigma * R_h):
-    #   Center:      -20/(6h²) - sigma*(2/3)
-    #   Direct nbr:   4/(6h²) - sigma*(1/12)
-    #   Diagonal nbr: 1/(6h²)  (R_h has no diagonal entries)
+    # Combined (-L_h + sigma * R_h):
+    #   Center:       20/(6h²) + sigma*(2/3)
+    #   Direct nbr:   -4/(6h²) + sigma*(1/12)
+    #   Diagonal nbr: -1/(6h²)  (R_h has no diagonal entries)
 
     coeff_L = 1.0 / (6.0 * h2)
 
-    center_val = -20.0 * coeff_L - sigma * (2.0 / 3.0)
-    neighbor_val = 4.0 * coeff_L - sigma / 12.0
-    diag_neighbor_val = 1.0 * coeff_L
+    center_val = 20.0 * coeff_L + sigma * (2.0 / 3.0)
+    neighbor_val = -4.0 * coeff_L + sigma / 12.0
+    diag_neighbor_val = -1.0 * coeff_L
 
     rows, cols, vals = [], [], []
     for i in range(N):
@@ -132,7 +129,7 @@ def _build_fft9_compact_system(n, f_func, bc_func, sigma=0.0, sx=1.0, sy=1.0):
                 vals.append(diag_neighbor_val)
 
     A = sparse.csr_matrix((vals, (rows, cols)), shape=(N * N, N * N))
-    b = Rg.reshape(-1)
+    b = rhs_tilde.reshape(-1)
 
     return A, b
 

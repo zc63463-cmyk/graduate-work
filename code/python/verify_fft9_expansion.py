@@ -4,8 +4,8 @@ Verify FFT9 Fourier symbol expansion using SymPy.
 Unified notation: use continuous wavenumbers xi=p*pi, eta=q*pi,
  then alpha = xi*h, beta = eta*h.
 
-Goal: verify that h^2 term cancels in -lambda_L / lambda_R,
- giving O(h^4) accuracy.
+Goal: verify that the h^2 term cancels in -lambda_L / lambda_R,
+giving O(h^4) interior Fourier symbol consistency.
 """
 import sympy as sp
 
@@ -17,7 +17,7 @@ beta = eta * h
 # ============================================================
 # L_h Fourier symbol (9-point stencil)
 # lambda_L = [-20 + 8(cos alpha + cos beta) + 4 cos alpha cos beta] / (6*h^2)
-# Note: L_h ≈ Delta, so lambda_L's leading term is negative
+# Note: L_h approximates Delta, so lambda_L's leading term is negative.
 # ============================================================
 cos_a = sp.cos(alpha)
 cos_b = sp.cos(beta)
@@ -37,7 +37,7 @@ print("lambda_L = ")
 sp.pprint(lambda_L_expanded)
 print()
 
-# -lambda_L should have leading term -(xi^2 + eta^2)
+# -lambda_L should have leading term +(xi^2 + eta^2).
 neg_lambda_L = -lambda_L_sub
 neg_lambda_L_expanded = sp.simplify(sp.series(neg_lambda_L, h, 0, 7).removeO())
 
@@ -46,9 +46,10 @@ sp.pprint(neg_lambda_L_expanded)
 print()
 
 # Extract coefficients
-print("Coefficient of h^0 (should be -(xi^2 + eta^2)):")
+print("Coefficient of h^0 (should be xi^2 + eta^2):")
 coeff_h0 = sp.simplify(neg_lambda_L_expanded.coeff(h, 0))
 print("  ", coeff_h0)
+print("  Match: ", sp.simplify(coeff_h0 - (xi**2 + eta**2)) == 0)
 print()
 
 print("Coefficient of h^2 (should be -(xi^2 + eta^2)^2 / 12):")
@@ -116,7 +117,7 @@ print()
 
 # Check if h^2 term cancels
 coeff_eff_h2 = sp.simplify(eff_expanded.coeff(h, 2))
-print("Coefficient of h^2 in effective eigenvalue (should be 0 for O(h^4) accuracy):")
+print("Coefficient of h^2 in effective eigenvalue (should be 0 for O(h^4) symbol consistency):")
 print("  ", coeff_eff_h2)
 print("  Is zero?", sp.simplify(coeff_eff_h2) == 0)
 print()
@@ -136,8 +137,8 @@ print()
 
 print("=============================================")
 print("CONCLUSION:")
-print("  -lambda_L = -(xi^2+eta^2) - ((xi^2+eta^2)^2/12) h^2 + ...")
+print("  -lambda_L = xi^2+eta^2 - ((xi^2+eta^2)^2/12) h^2 + ...")
 print("  lambda_R = 1 - (xi^2+eta^2)h^2/12 + ...")
 print("  -lambda_L / lambda_R = xi^2+eta^2 + O(h^4)")
-print("  => FFT9 achieves 4th-order accuracy.")
+print("  => FFT9 has fourth-order interior Fourier symbol consistency.")
 print("=============================================")

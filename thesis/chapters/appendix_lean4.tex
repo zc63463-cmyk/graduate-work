@@ -4,80 +4,78 @@
 \section{Lean 4 辅助形式化验证}
 \label{app:lean4}
 
-本文利用 Lean 4 定理证明器对三参数九点修正族的六阶不可行性进行了辅助代数验证。
-验证目标聚焦于 Fourier 特征值分析中的关键代数步骤，而非完整 PDE 全局误差估计。
+本文使用 Lean 4 辅助验证三参数九点修正族六阶 local consistency 不可达性反证中的代数核心。
+验证对象不是完整 PDE 收敛定理，而是 local Fourier symbol 展开后得到的有限个多项式系数条件。
 
 \subsection{验证目标}
 
-考虑九点紧致差分格式的三参数修正族：
+考虑定理~\ref{thm:6th_impossible}中的三参数九点修正族：
 \begin{equation}
   (-L_h - \alpha h^2 L_h^{(5)})u + \sigma(R_h+\beta h^2 I)u = (R_h+\gamma h^2 I)f,
 \end{equation}
-其中 $L_h^{(5)}$ 为五点 Laplacian 算子。
-通过 Fourier 分析，该格式的有效特征值为：
-\begin{equation}
-  \hat{\lambda}_{\text{eff}}
-  = \frac{-\hat{\lambda}_L - \alpha h^2\hat{\lambda}_5
-  + \sigma(\hat{\lambda}_R+\beta h^2)}
-  {\hat{\lambda}_R+\gamma h^2},
-\end{equation}
-其中 $\hat{\lambda}_L$、$\hat{\lambda}_R$、$\hat{\lambda}_5$ 分别为 $L_h$、$R_h$、$L_h^{(5)}$ 的 Fourier symbol。
-
-六阶精度要求：对所有 Fourier 模式 $(p,q)$，$h^4$ 项系数 $c_4(p,q;\alpha,\beta,\gamma) = 0$。
-通过 $c_2 = 0$ 的一致性条件，可推出 $\alpha = -\gamma$（Poisson）或附加 $\beta = \gamma$（Helmholtz）。
-代入后，$c_4$ 对模式 $(p,q)$ 的显式表达式为：
-\begin{equation}
-  c_4(p,q;\gamma) = \text{mode-dependent polynomial in } \gamma,
-\end{equation}
-验证目标是证明：不存在统一的实数 $\gamma$ 使得所有模式同时满足 $c_4 = 0$。
+其中 $\alpha,\beta,\gamma$ 是与 Fourier mode 无关的统一常数。
+在 local Fourier symbol 展开中，六阶一致性要求 $h^2$ 项系数 $c_2$ 和
+$h^4$ 项系数 $c_4$ 对所有连续波数同时为零。Lean 4 辅助验证的目标是检查这些
+系数条件中的有限代数核心：
+\begin{enumerate}[itemsep=1pt]
+  \item \(c_2=0\) 推出的参数必要关系；
+  \item 代入这些必要关系后，两个 Fourier 测试模式对应的 \(c_4=0\) 条件互相矛盾；
+  \item 因此不存在统一实数参数使这些必要条件同时成立。
+\end{enumerate}
 
 \subsection{验证定理与策略}
 
-表~\ref{tab:lean4_theorems} 列出了 Lean 4 中验证的核心定理。
-
+表~\ref{tab:lean4_theorems} 列出了 Lean 4 中验证的核心实数域定理。
+该表只对应反证链条中的有限个代数命题，不表示从差分模板到 PDE 全局误差估计的完整形式化。
 \begin{table}[H]
 \centering
-\caption{Lean 4 验证定理清单}
+\caption{Lean 4 辅助验证的代数核心定理清单}
 \label{tab:lean4_theorems}
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{llll}
 \toprule
 \textbf{Lean 定理名} & \textbf{数学含义} & \textbf{证明策略} & \textbf{状态} \\
 \midrule
-\texttt{c4\_num\_mode\_10\_real} & $c_4(1,0,\gamma) = 60\gamma + 3$ & \texttt{ring} & 通过 \\
-\texttt{c4\_num\_mode\_11\_real} & $c_4(1,1,\gamma) = 120\gamma - 4$ & \texttt{ring} & 通过 \\
-\texttt{sixth\_order\_impossible\_real} & 不存在统一 $\gamma$ 使所有模式 $c_4=0$ & \texttt{ring} + \texttt{linarith} & 通过 \\
-\texttt{c2\_poisson\_forces\_neg\_gamma} & $c_2=0$ 推出 $\alpha = -\gamma$ & \texttt{linarith} & 通过 \\
-\texttt{poisson\_no\_sixth\_order\_real} & Poisson 三参数族不可达六阶 & \texttt{ring} + \texttt{linarith} & 通过 \\
-\texttt{c2\_helmholtz\_forces\_neg\_gamma} & Helmholtz 中 $c_2=0$ 亦推出 $\alpha=-\gamma$ & \texttt{linarith} & 通过 \\
-\texttt{helmholtz\_no\_sixth\_order\_real} & Helmholtz 三参数族不可达六阶 & \texttt{ring} + \texttt{linarith} & 通过 \\
+\texttt{c4\_num\_mode\_10\_real} & \(c_4(1,0,\gamma)=60\gamma+3\) 的代数展开 & \texttt{ring} & 通过 \\
+\texttt{c4\_num\_mode\_11\_real} & \(c_4(1,1,\gamma)=120\gamma-4\) 的代数展开 & \texttt{ring} & 通过 \\
+\texttt{sixth\_order\_impossible\_real} & 两个测试模式的 \(c_4=0\) 条件不相容 & \texttt{ring}+\texttt{linarith} & 通过 \\
+\texttt{c2\_poisson\_forces\_neg\_gamma} & Poisson 情形下 \(c_2=0\) 推出必要关系 \(\alpha=-\gamma\) & \texttt{linarith} & 通过 \\
+\texttt{poisson\_no\_sixth\_order\_real} & Poisson 三参数族的 local symbol 六阶条件不相容 & \texttt{ring}+\texttt{linarith} & 通过 \\
+\texttt{c2\_helmholtz\_forces\_neg\_gamma} & Helmholtz 情形下 \(c_2=0\) 推出必要关系 \(\alpha=-\gamma\) & \texttt{linarith} & 通过 \\
+\texttt{helmholtz\_no\_sixth\_order\_real} & Helmholtz 三参数族的 local symbol 六阶条件不相容 & \texttt{ring}+\texttt{linarith} & 通过 \\
 \bottomrule
 \end{tabular}%
 }
 \end{table}
 
-\begin{itemize}[itemsep=2pt]
-  \item \textbf{整数域版本}（`omega` 策略）：当前源码包含 14 个 theorem 声明，覆盖整数域上的系数恒等式和矛盾推导。
-  \item \textbf{实数域版本}（`ring` + `linarith` 策略）：当前源码包含 10 个 theorem 声明，覆盖实数域上的多项式等式和线性不等式。
-  \item 表~\ref{tab:lean4_theorems} 仅列出与论文命题直接对应的核心实数域定理。
-\end{itemize}
+表中定理只对应反证中的代数步骤。它们说明：一旦 \(c_2=0\) 给出必要参数关系，
+两个测试波数 \((1,0)\) 与 \((1,1)\) 的 \(c_4=0\) 条件就无法由同一个常数
+\(\gamma\) 同时满足。
+这里的 \((1,0)\) 与 \((1,1)\) 是 local Fourier symbol 中的连续波数测试点，
+不是 Dirichlet DST-I 离散模态编号。
+其中，\texttt{c2\_helmholtz\_forces\_neg\_gamma} 直接验证的是
+Helmholtz 情形下 \(c_2=0\) 所需参数关系中的 \(\alpha=-\gamma\) 代数核心；
+若在论文推导中使用 \(\beta=\gamma\)，该关系来自相应系数方程的纸面推导，
+而不是该 Lean 定理的直接结论。
 
 \subsection{验证范围与局限性}
 
 \textbf{已验证的内容}：
 \begin{enumerate}[itemsep=1pt]
-  \item $c_4$ 系数对具体模式 $(1,0)$ 和 $(1,1)$ 的显式表达式；
-  \item 两个模式的 $c_4$ 不可能同时为零（矛盾推导）；
-  \item $c_2 = 0$ 对所有模式推出 $\alpha = -\gamma$ 的代数正确性；
-  \item 统一路径（$c_2 \to \alpha=-\gamma \to c_4$ 矛盾）在 Poisson 和 Helmholtz 情形下的正确性。
+  \item \(c_4\) 系数在测试波数 \((1,0)\) 和 \((1,1)\) 上的显式代数表达式；
+  \item 两个测试波数的 \(c_4=0\) 条件互相矛盾；
+  \item \(c_2=0\) 推出相应参数必要关系的代数步骤；
+  \item Poisson 与 Helmholtz 两种情形中 \(c_2 \to c_4\) 反证路径的代数不相容性。
 \end{enumerate}
 
 \textbf{未覆盖的内容}：
 \begin{enumerate}[itemsep=1pt]
-  \item 完整 PDE 截断误差的全局误差估计（需 Sobolev 空间理论）；
-  \item Fourier symbol 从离散求和到连续积分的收敛性证明；
-  \item DST-I 对角化矩阵的严格谱理论（特征值、特征向量的正交完备性）；
-  \item Python 求解器和实验脚本的程序实现正确性。
+  \item Fourier symbol 从差分模板导出的全过程；
+  \item Taylor 展开建模为 \(c_2,c_4\) 的全过程；
+  \item Dirichlet DST-I 谱理论或 Neumann/Mixed 边界下的 DCT 理论；
+  \item 边界闭合分析；
+  \item 完整 PDE 全局误差估计；
+  \item Python 求解器、实验脚本或数值实验结果的程序正确性。
 \end{enumerate}
 
 \subsection{形式化验证工具链}
@@ -86,10 +84,11 @@
   \item \textbf{Lean 版本}：leanprover/lean4:v4.29.1
   \item \textbf{Mathlib 版本}：v4.29.1（预编译 olean）
   \item \textbf{构建命令}：\texttt{lake build}
-  \item \textbf{验证状态}：\textbf{无 sorry / admit / axiom / unsafe}，全部定理通过编译
+  \item \textbf{验证状态}：自有形式化文件无 \texttt{sorry}、\texttt{admit}、\texttt{axiom} 或 \texttt{unsafe}，全部定理通过编译。
 \end{itemize}
 
 \begin{remark}
-  Lean 4 验证覆盖的是代数系数矛盾，为论文的解析推导提供了机器可检查的背书，
-  但不包含完整 PDE 全局误差估计或谱理论的严格形式化。
+  Lean 4 验证覆盖的是 Fourier symbol 展开之后的有限多项式条件之间的不相容性，
+  为论文中的代数反证提供机器可检查的支持。
+  它不声称证明完整 PDE 收敛理论、边界闭合理论、DST/DCT 谱理论或 Python 程序正确性。
 \end{remark}

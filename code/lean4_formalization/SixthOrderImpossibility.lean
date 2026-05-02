@@ -1,17 +1,19 @@
 /-
   SixthOrderImpossibility — Lean 4 Formalization (Verified)
 
-  Theorem: For the modified compact finite difference format
-    (L_h + αh²L₅)u - k²(R_h + βh²I)u = -(R_h + γh²I)f
-  the h⁴ truncation error coefficient
-    c₄(ξ,η;γ) = -(3η⁶ + 60γη⁴ - 5η⁴ξ² - 5η²ξ⁴ + 60γξ⁴ + 3ξ⁶)/720
-  cannot be made zero for all Fourier modes (ξ,η) by any single γ.
+  Scope: this file verifies the algebraic core used in the thesis proof for a
+  restricted three-parameter nine-point correction family with mode-independent
+  constants. It does not formalize PDE convergence, boundary closure, Fourier
+  symbol derivation from stencils, or numerical implementation correctness.
 
-  Core proof: c₄(1,0;γ)=0 requires 60γ+3=0, c₄(1,1;γ)=0 requires 120γ-4=0.
-  Since 2·(60γ+3) - (120γ-4) = 10 ≠ 0, no universal γ exists.
+  Algebraic obstruction: after the necessary c₂ conditions are imposed, the h⁴
+  coefficient contains
+    c₄(ξ,η;γ) = -(3η⁶ + 60γη⁴ - 5η⁴ξ² - 5η²ξ⁴ + 60γξ⁴ + 3ξ⁶)/720.
+  The conditions c₄(1,0;γ)=0 and c₄(1,1;γ)=0 require incompatible values of
+  the same mode-independent constant γ.
 
   This file uses only Lean 4 core (Int + omega), no Mathlib needed.
-  All theorems verified by the Lean 4 kernel (v4.20.0).
+  All theorems are checked by the Lean 4 kernel.
 -/
 
 -- ============================================================
@@ -149,10 +151,10 @@ theorem no_rational_gamma :
   omega
 
 /--
-★ Main Theorem ★ No integer γ makes c₄(ξ,η,γ) = 0 for all modes.
+★ Algebraic core theorem ★ No integer γ makes c₄(ξ,η,γ) = 0 for all test modes.
 
-This proves that the 9-point compact finite difference format cannot
-achieve 6th-order accuracy for the Poisson/Helmholtz equation.
+This supports the restricted local Fourier-symbol obstruction for the
+three-parameter correction family; it is not a full PDE convergence theorem.
 
 Proof:
   c₄(1,0,γ) = 0  requires  60γ + 3 = 0
@@ -178,8 +180,8 @@ theorem poisson_no_sixth_order :
   exact sixth_order_impossible ⟨γ, hc4⟩
 
 /--
-Even with c₂ correctly eliminated (α=-γ), c₄ cannot be made zero.
-This is the definitive obstruction to 6th-order compact schemes.
+Even with c₂ correctly eliminated (α=-γ), c₄ cannot be made zero for all modes.
+This is the algebraic obstruction for the restricted three-parameter family.
 -/
 theorem c4_is_the_obstruction (γ : Int)
     (h : ∀ (ξ η : Int), c4_num ξ η γ = 0) : False :=
@@ -212,7 +214,7 @@ the full formalization over ℝ would establish:
     have : β = γ := by nlinarith [hc2 1 0, this]
     exact sixth_order_impossible_poisson ⟨γ, hc4⟩
 
-Key mathematical insight: c₄(ξ,η;γ) does NOT depend on k² when
-the optimal c₂=0 parameters are used. Thus the impossibility is
-identical for Poisson and Helmholtz equations.
+Key mathematical insight: once the c₂=0 necessary relations are imposed, the
+same c₄ polynomial obstruction applies to the restricted three-parameter family
+in both Poisson and Helmholtz settings.
 -/

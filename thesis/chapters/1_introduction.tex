@@ -102,11 +102,19 @@ Saad \cite{Saad2003} 对 Krylov 子空间方法做了系统总结。
         覆盖 Dirichlet、Neumann 和混合边界条件；同时实现并验证了针对 Dirichlet 边界的 FFT9 四阶紧致差分求解器，
         并明确区分 modified Helmholtz（$\sigma=+\kappa^2$，正定）与 true Helmholtz（$\sigma=-\kappa^2$，可能不定且存在近共振风险）；
   \item 对 Neumann 边界条件，采用 ghost-point 方法配合对称化 DCT-I 变换，解决了非对称 Laplacian 矩阵的对角化问题；
+  \item 在同一 Dirichlet manufactured solution 上构造精度--成本对比实验，
+        比较五点 FFT 直接法、Dirichlet FFT9 和无预处理 GMRES(30) 的误差--时间关系；
+        该对比用于展示当前实现下的整体基准趋势，不作为严格 kernel-to-kernel benchmark，
+        也不代表所有预处理 Krylov 方法；
   \item 实现了基于 Givens 旋转的 GMRES 迭代法，构造了 2D Helmholtz 稀疏矩阵，
         通过 Gaussian 型非特征右端项和近共振扫描分析 modified/true Helmholtz 方程下
         频域分母和无预处理 Krylov 行为的本质差异；
-  \item 通过 Fourier 特征值分析证明了三参数九点修正族的六阶不可行性，
-        为四阶紧致格式是最优选择提供了理论依据，并利用 Lean 4 进行了辅助形式化校验。
+        其中频域分母热图、Dirichlet 五点条件数校验和离散模态投影实验共同形成
+        “离散谱分析--实现校验--数值实验”的证据链；
+  \item 通过 Fourier 特征值分析证明了三参数九点修正族在统一常数参数和
+        local Fourier symbol 意义下无法提升到六阶，
+        为当前 FFT9 四阶格式选择提供了局部符号层面的依据，
+        并利用 Lean 4 对反证中的代数核心进行了辅助形式化校验。
 \end{enumerate}
 
 本文结构安排如下：
@@ -114,5 +122,7 @@ Saad \cite{Saad2003} 对 Krylov 子空间方法做了系统总结。
 第\ref{sec:fft}章阐述基于 FFT 的快速直接法；
 第\ref{sec:helmholtz}章讨论 Helmholtz 方程的求解与边界条件处理；
 第\ref{sec:gmres}章介绍 GMRES 迭代法；
-第\ref{sec:experiments}章给出数值实验结果；
+第\ref{sec:experiments}章给出五组核心数值实验：
+Dirichlet 收敛、Neumann/mixed 边界处理、精度--成本对比、
+modified/true Helmholtz 谱结构与 GMRES 行为、true Helmholtz 近共振模态放大；
 第\ref{sec:conclusion}章总结全文并展望未来工作。

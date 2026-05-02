@@ -8,124 +8,113 @@
 
 本文针对矩形区域上的 Poisson 方程和 Helmholtz 方程，
 在统一的 $(-\nabla^2+\sigma)u=f$ 框架下，
-研究了基于 FFT 的快速直接求解方法，并以 GMRES 迭代法作为参照观察谱性质对 Krylov 收敛行为的影响。
-主要工作和贡献如下：
+研究了基于 FFT 的快速直接求解方法，并以无预处理 GMRES(30) 作为迭代法基准，
+观察谱分母结构对 Krylov 收敛行为的影响。
+主要工作如下：
 
-\begin{enumerate}
-  \item \textbf{FFT 快速直接求解器族}：实现了基于离散正弦/余弦变换的五种快速求解器
-        ——FA（Fourier Analysis）、CR（Cyclic Reduction）、FACR（混合算法）、
-        FFT9（四阶紧致差分）和五点差分直接法。
-        所有求解器在统一框架下通过频域分母 $d_{p,q}=\lambda_{p,q}+\sigma$
-        自然推广至 modified/true Helmholtz 方程。
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{FFT 快速直接求解器族}：
+        实现了 FA、CR、FACR-like、五点 FFT 直接法和 Dirichlet FFT9。
+        其中 FA/CR/FACR-like 对应五点二阶离散，
+        FFT9 对应 Dirichlet 九点紧致四阶离散。
+        当前 FACR-like 实现仍按 $O(N^2\log N)$ 处理，
+        不声称达到经典 FACR 的 $O(N^2\log\log N)$。
 
-  \item \textbf{Modified 与 True Helmholtz 的分类分析}：明确区分了
-        modified Helmholtz 方程（$\sigma=+\kappa^2$，矩阵正定，条件数随 $\kappa^2$ 改善）
-        与 true Helmholtz 方程（$\sigma=-\kappa^2$，矩阵可能不定，存在近共振风险），
-        指出两者在频域行为和迭代收敛性上存在根本差异。
-        Modified Helmholtz 不存在共振（因 $\lambda_{p,q}+\kappa^2 > 0$ 恒正），
-        而 true Helmholtz 在 $\lambda_{p,q} \approx \kappa^2$ 时可能发生共振。
+  \item \textbf{边界条件处理}：
+        对 Dirichlet 情形验证了齐次与非齐次边界下的二阶/四阶收敛；
+        对 Neumann 和 mixed 边界，采用 ghost-point 方法配合对称化 DCT-I/DST-I 变换，
+        并通过 flux residual、Dirichlet boundary residual、weighted mean 和 compatibility integral
+        验证受支持五点求解器的边界处理与零模态归一化。
+        FFT9 的四阶验证仅限 Dirichlet 边界。
 
-  \item \textbf{Neumann 边界条件的 ghost-point 对称化方法}：
-        针对 Neumann 边界条件导致的 Laplacian 矩阵非对称问题，
-        提出了 ghost-point 方法配合对称化 DCT-I 变换的解决方案。
-        通过对角缩放矩阵 $D = \mathrm{diag}(\sqrt{2}, 1, \ldots, 1, \sqrt{2})$
-        将非对称矩阵 $G$ 对称化为 $S = D^{-1}GD$，
-        使其被 DCT-I 对角化，从而在 FFT 框架内统一处理 Dirichlet 和 Neumann 边界条件。
+  \item \textbf{精度--成本对比}：
+        在同一光滑 Dirichlet manufactured solution 上，
+        对 FA、CR、FACR-like、FFT9 和无预处理 GMRES(30) 进行误差--时间比较。
+        结果显示，在规则矩形 Dirichlet 光滑问题和当前实现条件下，
+        FFT9 在误差--时间图中具有更好的 placement，
+        并以与 FFT 直接法相同量级的复杂度获得显著更低误差；
+        GMRES30 作为无预处理基准，在网格加密后迭代成本明显增大。
+        该比较是当前实现下不同离散/求解路径的基准趋势，
+        不是同一线性系统上的严格 kernel-to-kernel benchmark；
+        其中 GMRES30 作为无预处理基线，且 GMRES setup 被排除。
 
-  \item \textbf{三参数九点修正族六阶不可达性}：通过 Fourier 特征值分析验证了，
-        对于九点紧致差分格式的三参数修正族
-        $(-L_h - \alpha h^2 L_h^{(5)})u + \sigma(R_h+\beta h^2 I)u = (R_h+\gamma h^2 I)f$，
-        不存在统一的常数 $(\alpha, \beta, \gamma)$ 使得截断误差达到 $O(h^6)$。
-        证明路径为：先由 $c_2 = 0$（对所有模式）推出 $\alpha = -\gamma$
-        （$\sigma \neq 0$ 时正文代数推导还给出 $\beta = \gamma$），
-        再由 $c_4$ 系数的模态依赖性得出矛盾。
-        该代数核心已在 Lean 4 定理证明器中完成辅助形式化校验
-        （当前源码含整数域 14 个 theorem 声明 + 实数域 10 个 theorem 声明，表格仅列核心定理）。
+  \item \textbf{Modified/True Helmholtz 的谱结构分析}：
+        通过频域分母
+        $d_{p,q}=\lambda_{p,q}+\sigma$
+        统一解释 modified Helmholtz 与 true Helmholtz 的差异。
+        Modified Helmholtz 中 $\sigma=+\kappa^2$ 使 Dirichlet 五点分母
+        $\lambda_{p,q}+\kappa^2$ 全正，并在同一 Dirichlet 五点 SPD 系统、
+        $\kappa>0$ 下严格改善 2-范数条件数；
+        true Helmholtz 中分母可能正负混合，并在 $\kappa^2$ 接近离散特征值时出现小分母风险。
+        对本文 Dirichlet 五点正交 DST-I 系统，spectral denominator indicator
+        与 $\mathrm{cond}_2(A)$ 等价；该等价性依赖正交对角化和矩阵 symmetric/normal 结构，
+        不外推到 Neumann ghost-point 原始非对称矩阵、mixed 边界、
+        非正交对角化系统或一般 non-normal 系统。
 
-  \item \textbf{GMRES 迭代行为观察}：实现了基于 Givens 旋转的 GMRES(m) 算法，
-        构造了二维 Helmholtz 方程的五点差分稀疏矩阵，
-        并使用 Gaussian 型非特征右端项观察无预处理 Krylov 方法对谱性质的敏感性。
-        对 modified Helmholtz 方程 $\sigma=+\kappa^2$，
-        $\kappa^2$ 增大使频域分母远离零并改善条件数，
-        在本文测试范围内无预处理 GMRES 迭代次数呈下降趋势。
-        对 true Helmholtz 方程 $\sigma=-\kappa^2$，
-        通过近共振扫描实验验证了频域分母趋零时解范数放大和迭代困难的现象。
+  \item \textbf{True Helmholtz 近共振模态放大}：
+        对离散谱 near-resonance 情形，使用 Gaussian RHS、模态投影和残差历史验证
+        \[
+          \hat u_{p,q}=\frac{\hat f_{p,q}}{\lambda_{p,q}^h-\kappa^2}.
+        \]
+        当 $\kappa^2=\lambda_{\mathrm{target}}^h+\delta$ 时，
+        目标模态幅值遵循 $1/|\delta|$ 放大规律。
+        近共振残差历史显示，在当前 Dirichlet 五点离散、当前 Gaussian RHS
+        和无预处理 GMRES(30) 设置下，残差停滞或达到迭代上限的现象
+        与小分母造成的模态放大和病态性相一致。
+
+  \item \textbf{三参数九点修正族六阶 local consistency 不可达性}：
+        通过 Fourier 特征值分析验证了三参数九点修正族不存在统一常数
+        $(\alpha,\beta,\gamma)$，使其在 local Fourier symbol / interior consistency
+        意义下达到六阶。
+        该结论不排除更大模板、更多参数或特殊边界闭合下的高阶格式；
+        其代数核心已在 Lean 4 中进行辅助形式化校验。
+        Lean 4 不覆盖完整 PDE 全局误差估计、DST/DCT 谱理论证明、边界闭合分析或 Python 程序正确性。
 \end{enumerate}
 
 \subsection{主要结论}
 
-\begin{enumerate}
-  \item 在规则矩形区域和均匀网格上，FFT 直接法可以高效求解对应离散系统。
-        FA 方法实现简单；FACR-like 方法在当前实现中主要体现为常数因子层面的改进；
-        FFT9 方法以适度的额外计算量换取四阶精度。
+\begin{enumerate}[itemsep=2pt]
+  \item 在规则矩形区域和均匀网格上，FFT 直接法能够高效求解对应离散系统。
+        对光滑 Dirichlet 问题，FFT9 的四阶精度使其在当前实验的误差--时间图中
+        以相近 FFT 复杂度获得更低误差。
 
-  \item 无预处理 GMRES 对离散矩阵的谱性质较为敏感。
-        在规则区域上它不是 FFT 直接法的替代品，
-        但作为通用 Krylov 方法，后续可与预处理技术结合用于非均匀网格、
-        变系数问题和复杂几何区域。
+  \item Neumann/mixed 边界的重点不只是重复五点二阶收敛，
+        而是验证 ghost-point 对称化、边界通量残差、mixed Dirichlet 边界值残差和 Neumann Poisson 零模态处理。
 
-  \item 波数参数 $\sigma$ 对求解效果的影响因方程类型而异：
-        \begin{itemize}[itemsep=2pt]
-          \item Modified Helmholtz（$\sigma=+\kappa^2$）：
-                $\kappa^2$ 的加入使矩阵更对角占优，条件数改善，
-                本文 Gaussian RHS 扫描中 GMRES 迭代次数随 $\kappa^2$ 增大呈下降趋势；
-                FFT 直接法的频域分母保持为正，未出现 true Helmholtz 的小分母共振现象。
-          \item True Helmholtz（$\sigma=-\kappa^2$）：
-                当 $\kappa^2$ 接近某特征值时出现共振，
-                频域除数接近零，解范数急剧增大；
-                近共振扫描实验显示 $|\delta|$ 减小时频域分母趋零、
-                解范数放大和无预处理 GMRES 无法收敛的行为；
-                实际应用中通常需要考虑 MINRES/GMRES 与 shifted-Laplacian 等预处理思想结合，
-                但本文未对具体预处理器进行实验评价。
-        \end{itemize}
-        因此，不能笼统地说“波数增大导致求解困难”。
-        必须区分 modified 与 true Helmholtz 两类方程。
+  \item Modified Helmholtz 与 true Helmholtz 的数值难点不能混写。
+        modified Helmholtz 对应正分母结构，并在同一 Dirichlet 五点 SPD 系统中改善条件数；
+        true Helmholtz 在穿过离散谱时可能奇异、不定或负定，
+        并在 near-resonance 下出现小分母和模态放大；
+        在本文无预处理 GMRES(30) 基准中，这种病态谱结构与观察到的残差停滞相一致。
 
-  \item Ghost-point 对称化 DCT-I 方法是处理 Neumann 边界条件的一种优雅方案，
-        它将 Neumann 问题无缝纳入 FFT 直接法框架，
-        保持了方法的统一性和高效性。
+  \item 本文中的 GMRES 结论均限定为无预处理 GMRES(30) 基准。
+        这些结果说明当前离散系统的谱分母结构会影响 Krylov 收敛，
+        但不代表预处理 GMRES、MINRES 或所有 Krylov 方法的表现。
 \end{enumerate}
 
 \subsection{展望}
 
 本文的研究可以在以下方向进一步拓展：
 
-\begin{enumerate}
-  \item \textbf{非均匀网格}：当前方法基于均匀网格。
-        对于解变化剧烈的区域，自适应网格加密技术（如 FAC 方法）
-        可以在保持精度的同时减少计算量。
-        如何将 FFT 快速求解器与非均匀网格结合是一个有价值的研究方向。
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{预处理 Krylov 方法}：
+        对大规模 true Helmholtz 问题，可进一步研究 shifted Laplacian、
+        多重网格、区域分解等预处理器与 GMRES/MINRES 的结合。
+        本文没有测试具体预处理器。
 
-  \item \textbf{变系数问题}：当方程系数（如介质参数）空间变化时，
-        FFT 直接法不再适用，此时迭代法（配合适当的预处理）成为主要选择。
-        研究基于 FFT 的高效预处理子是一个重要的课题。
+  \item \textbf{Neumann/mixed 下的高阶紧致格式}：
+        当前 FFT9 四阶验证仅限 Dirichlet 边界。
+        若要支持 Neumann 或 mixed 边界，需要重新设计边界模板、右端项修正和可对角化结构。
 
-  \item \textbf{高维问题}：本文的方法可以自然推广到三维问题。
-        三维问题的 FFT 直接法复杂度为 $O(N^3 \log N)$，
-        本文 FACR-like 实现仍属于 $O(N^2\log N)$ 的二维基线；
-        三维经典 FACR 的复杂度优化不在本文实现和实验验证范围内，
-        但内存需求随维数快速增长，需要更高效的实现策略。
+  \item \textbf{更接近经典 FACR 的实现}：
+        本文 FACR-like 仍是 $O(N^2\log N)$ 的二维实现基线。
+        后续可研究递归 CR 与方向变换结合的实现，以接近经典 FACR 的复杂度优势。
 
-  \item \textbf{大规模 true Helmholtz 问题}：对于高频（大波数）true Helmholtz 方程，
-        GMRES 的收敛性严重依赖于预处理的质量。
-        研究基于 Shifted Laplacian 的预处理方法、
-        多层方法（Multigrid）以及区域分解方法，
-        是解决大规模 true Helmholtz 问题的前沿方向~\cite{Ernst2011, YaoDengming2018, Niu2009}。
-        此外，物理信息神经网络（PINN）等新兴方法~\cite{ShanLianpu2023}
-        也为 Helmholtz 方程的求解提供了新思路。
+  \item \textbf{非均匀网格、变系数和复杂几何}：
+        当前 FFT 直接法依赖矩形区域、均匀网格和可分离常系数结构。
+        对非均匀网格、变系数或复杂几何区域，FFT 直接法通常需要作为预处理子或局部求解器使用。
 
-  \item \textbf{形式化验证}：本文对六阶不可行定理进行了 Lean 4 形式化验证，
-        这是将交互式定理证明器应用于数值分析领域的一次尝试。
-        Lean 4 在本文中仅用于验证六阶不可行性证明中的代数核心步骤，
-        包括 $c_2=0$ 推出的参数约束，以及两个 Fourier 模式下 $c_4=0$ 条件之间的矛盾。
-        该形式化验证不覆盖完整 PDE 全局误差估计、DST/DCT 谱理论证明，
-        也不验证程序实现正确性。
-        未来可以将形式化验证扩展到更广泛的差分格式理论，
-        如稳定性分析（Lax 等价定理）、收敛阶估计等，
-        为数值算法的可靠性提供机器可验证的数学保证。
-
-  \item \textbf{GPU 加速}：FFT 和稀疏矩阵-向量乘法都适合在 GPU 上并行执行。
-        利用 CUDA 或 OpenCL 实现 GPU 加速版本，
-        可以将求解速度提升一到两个数量级，
-        使其能够处理更大规模的实际问题。
+  \item \textbf{形式化验证扩展}：
+        未来可以将 Lean 4 形式化从代数核心推广到更多差分格式理论，
+        但完整 PDE 收敛性、稳定性和程序正确性仍需要更大的形式化工程。
 \end{enumerate}

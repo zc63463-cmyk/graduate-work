@@ -101,18 +101,18 @@ $r = \sqrt{(h_{j,j}^{(j-1)})^2 + (h_{j+1,j}^{(j-1)})^2}$，
 \begin{algorithm}
 \caption{GMRES 算法\cite{SaadSchultz1986, Niu2009}}
 \begin{algorithmic}[1]
-\REQUIRE $A$, $\mathbf{b}$, 初始猜测 $\mathbf{x}_0$，容差 $\varepsilon$，重启参数 $m$
+\REQUIRE $A$, $\mathbf{b}$, 初始猜测 $\mathbf{x}_0$，容差 $\varepsilon$，restart length $r$
 \ENSURE 近似解 $\mathbf{x}$
 \STATE $\mathbf{r}_0 = \mathbf{b} - A\mathbf{x}_0$，$\beta = \|\mathbf{r}_0\|$，$\mathbf{v}_1 = \mathbf{r}_0 / \beta$
 \FOR{重启循环}
-  \FOR{$j = 1, 2, \ldots, m$}
+  \FOR{$j = 1, 2, \ldots, r$}
     \STATE Arnoldi 步：计算 $\mathbf{w} = A\mathbf{v}_j$，正交化得 $h_{i,j}$ 和 $\mathbf{v}_{j+1}$
-    \STATE 对 $\bar{H}_m$ 的第 $j$ 列应用已有 Givens 旋转 $\Omega_1, \ldots, \Omega_{j-1}$
+    \STATE 对当前 Hessenberg 矩阵的第 $j$ 列应用已有 Givens 旋转 $\Omega_1, \ldots, \Omega_{j-1}$
     \STATE 计算新 Givens 旋转 $\Omega_j$：$c_j, s_j$
     \STATE 应用旋转到右端：$\mathbf{g} \leftarrow \Omega_j \mathbf{g}$
     \STATE 残差范数 $= |g_{j+1}|$；若 $< \varepsilon$，求解 $R_j \mathbf{y} = \mathbf{g}$，更新 $\mathbf{x}$，停止
   \ENDFOR
-  \STATE 求解 $R_m \mathbf{y} = \mathbf{g}$，更新 $\mathbf{x} = \mathbf{x} + V_m \mathbf{y}$
+  \STATE 求解 $R_r \mathbf{y} = \mathbf{g}$，更新 $\mathbf{x} = \mathbf{x} + V_r \mathbf{y}$
 \ENDFOR
 \end{algorithmic}
 \end{algorithm}
@@ -139,60 +139,103 @@ $r = \sqrt{(h_{j,j}^{(j-1)})^2 + (h_{j+1,j}^{(j-1)})^2}$，
   GMRES 选择 $\mathbf{y}_m$ 极小化此范数，得证。$\qed$
 \end{theorem}
 
-\begin{theorem}[GMRES 收敛率估计]
-  \label{thm:gmres_convergence}
-  设 $A$ 为正定矩阵（$A + A^T$ 正定），$\lambda_{\min}$ 和 $\lambda_{\max}$
-  分别为 $A + A^T$ 的最小和最大特征值，则：
+\begin{remark}[正定型 GMRES 收敛率背景]
+  \label{rem:gmres_positive_background}
+  GMRES 的一般收敛行为由 Krylov 子空间中的多项式逼近问题决定。
+  对于一般 non-normal 或不定矩阵，单纯的特征值条件并不足以完整描述收敛性。
+  作为背景，若矩阵 $A$ 的对称部分
+  \[
+    H=\frac{A+A^T}{2}
+  \]
+  正定，并记
+  \[
+    \mu=\lambda_{\min}(H)>0,
+  \]
+  则 full GMRES 满足一类正定型残差估计
   \begin{equation}
-    \frac{\|\mathbf{r}_m\|}{\|\mathbf{r}_0\|}
-    \leq \left(1 - \frac{\lambda_{\min}^2}{\lambda_{\max} \|A\|^2}\right)^{m/2}
+    \frac{\|\mathbf{r}_m\|_2}{\|\mathbf{r}_0\|_2}
+    \le
+    \left(
+      1-\frac{\mu^2}{\|A\|_2^2}
+    \right)^{m/2}.
     \label{eq:gmres_bound}
   \end{equation}
-  上述收敛率估计依赖于 $A+A^T$ 正定，因此只适用于 Dirichlet Poisson、
-modified Helmholtz 等正定或强正定情形。对于 Neumann Poisson，
-离散矩阵存在常数零模态，需在满足兼容条件并去除零均值模态后讨论；
-对于 true Helmholtz，矩阵不定，该正定型收敛界不适用。
+  该估计说明：当 $A$ 的对称部分远离奇异且 $\|A\|_2$ 不过大时，
+  full GMRES 残差可得到理论下降保证。
 
-对于五点差分格式下的各类方程，$\lambda_{\min}$ 和 $\lambda_{\max}$
-  指 $A+A^T$ 的最小和最大特征值。对于 SPD 矩阵，即为 $A$ 本身的特征值。
+  对于 SPD 矩阵，$H=A$，
+  \[
+    \mu=\lambda_{\min}(A),
+    \qquad
+    \|A\|_2=\lambda_{\max}(A).
+  \]
+  因此上述估计化为
+  \[
+    \frac{\|\mathbf{r}_m\|_2}{\|\mathbf{r}_0\|_2}
+    \le
+    \left(
+      1-\frac{1}{\kappa_2(A)^2}
+    \right)^{m/2}.
+  \]
+  该界通常较为保守；对于 SPD 系统，CG 具有更尖锐的经典条件数收敛界。
+  本文保留该估计仅作为 GMRES 在正定型问题上的背景说明。
+
+  上述正定型估计的适用范围如下：
   \begin{itemize}[itemsep=2pt]
-    \item \textbf{Poisson}（$\sigma=0$，Dirichlet BC）：
-          $\lambda_{\min} \approx 2\pi^2$，$\|A\| \approx 8/h^2$，
-          $\rho \approx 1 - O(h^4)$，收敛慢；
-    \item \textbf{Modified Helmholtz}（$\sigma=+\kappa^2$，Dirichlet BC）：
-          $\lambda_{\min} \approx 2\pi^2+\kappa^2$，$\|A\| \approx 8/h^2+\kappa^2$，
-          $\kappa^2$ 的加入使 $\lambda_{\min}$ 增大，条件数改善，收敛通常加快；
-    \item \textbf{Modified Helmholtz}（$\sigma=+\kappa^2$，Neumann BC）：
-          $\lambda_{\min} \approx \kappa^2$（零模式 $d_{0,0}=\kappa^2$），
-          条件数 $\kappa(A) \approx (8/h^2+\kappa^2)/\kappa^2 = O(1/(h^2\kappa^2))$，
-          当 $\kappa^2 \gg 1$ 时远优于 Poisson 的 $O(h^{-2})$；
-    \item \textbf{True Helmholtz}（$\sigma=-\kappa^2$）：矩阵不定，
-          上述正定收敛界不适用。
-          需使用 GMRES 的多项式逼近分析：
-          特征值分布在正负两侧，
-          收敛速度取决于复平面上的谱包络。
+    \item \textbf{Dirichlet Poisson}（$\sigma=0$）：
+          五点矩阵为 SPD，$\kappa_2(A)=O(h^{-2})$。
+          上述 GMRES 正定型背景界给出 $1-O(h^4)$ 量级的保守下降因子，
+          因此该界本身较弱，只用于说明网格加密会恶化 Krylov 收敛保证。
+    \item \textbf{Dirichlet modified Helmholtz}（$\sigma=+\kappa^2$）：
+          $A=A_0+\kappa^2I$ 为 SPD；在固定网格和 $\kappa>0$ 下
+          条件数相对于 Poisson 改善，因此通常观察到更快收敛。
+    \item \textbf{Modified Helmholtz（Neumann BC）}：
+          $\sigma=+\kappa^2$ 将 Neumann 零模态分母移到 $\kappa^2>0$，
+          在对称化变量中可按正定问题理解。
+    \item \textbf{Neumann Poisson}：
+          存在常数零模态，必须先满足 compatibility condition 并固定零均值代表元，
+          才能在去除零模态后的空间讨论正定型估计。
+    \item \textbf{True Helmholtz}（$\sigma=-\kappa^2$）：
+          矩阵可正定、奇异、不定或负定。
+          除 $\kappa^2<\lambda_{\min}$ 的正定区间外，上述正定型估计一般不适用；
+          near-resonance 下的 GMRES 行为需通过离散小分母谱结构、
+          Krylov 多项式逼近和实际残差历史解释。
   \end{itemize}
-\end{theorem}
+\end{remark}
 
 \subsection{重启策略}
 
-由于 Arnoldi 过程需要存储 $m$ 个 $N$-维向量，
-内存开销为 $O(mN)$。当 $m$ 较大时，采用重启策略 GMRES($m$)：
-每 $m$ 步后重新计算残差，以当前近似解为初始猜测开始新一轮迭代。
+由于本文复杂度表述中 $N$ 表示单方向内点数，总未知量数为 $M=N^2$。
+对 restarted GMRES，本文记 restart length 为 $r$，总 Arnoldi 步数为 $k$。
+算法只需存储当前 restart cycle 内的 Krylov basis，因此 Krylov 向量存储为
+\[
+  O(rM)=O(rN^2).
+\]
+每一步 sparse matrix-vector product 的成本为 $O(M)$，
+而 Arnoldi 正交化还需与当前 cycle 中已有向量正交。
+因而若计入正交化，总成本可估为
+\[
+  O(krM)=O(krN^2).
+\]
+当 $r$ 固定，例如本文实验中的 GMRES(30)，
+该成本可简写为 $O(kN^2)$，但常数依赖于 restart length。
 
-重启参数 $m$ 的选择影响收敛速度：
+采用重启策略 GMRES($r$)：每 $r$ 步后重新计算残差，
+以当前近似解为初始猜测开始新一轮迭代。
+restart length $r$ 的选择影响收敛速度：
 \begin{itemize}[itemsep=2pt]
-  \item $m$ 越大，每轮迭代的收敛量越大，但内存和正交化开销也越大
-  \item $m$ 太小可能导致\textbf{停滞现象}：重启后残差范数不再下降
-  \item 典型取值 $m = 20 \sim 50$
+  \item $r$ 越大，单个 restart cycle 中保留的 Krylov 信息越多，但内存和正交化开销也越大；
+  \item $r$ 太小可能导致\textbf{停滞现象}：重启后残差范数下降缓慢甚至不再下降；
+  \item 典型取值为 $r = 20 \sim 50$，本文实验使用 $r=30$。
 \end{itemize}
 
 \begin{remark}[重启的代价]
   重启丢失了之前所有 Krylov 基向量信息，
   新的 Krylov 子空间可能只包含有限的谱信息。
-  对于高度不定的问题，GMRES($m$) 可能需要极多的重启轮次，
-  这是本文实验中 $n=129$ 时 GMRES(30) 需要大量迭代的根本原因，
-  尤其对于 true Helmholtz 方程（$\sigma=-\kappa^2$）。
+  对于高度不定或 near-resonance 的问题，GMRES($r$) 可能需要极多的重启轮次。
+  本文实验中的 true Helmholtz GMRES 停滞现象不由上述正定型 bound 解释，
+  而应理解为离散谱小分母、Krylov 多项式逼近困难和 restarted GMRES 残差历史
+  共同作用的结果。
 \end{remark}
 
 \subsection{2D Helmholtz 稀疏矩阵构造}

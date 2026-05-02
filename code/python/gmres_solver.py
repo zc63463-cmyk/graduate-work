@@ -55,7 +55,8 @@ def gmres(A, b, x0=None, tol=1e-6, max_iter=100, restart=30,
     max_iter : int
         Maximum total iterations
     restart : int
-        Restart parameter m (GMRES(m))
+        Restart length r (GMRES(r)); the implementation variable m below
+        stores the effective length of the current restart cycle.
     return_history : bool
         If True, return per-iteration residual history
 
@@ -553,7 +554,7 @@ def gmres_helmholtz(n, f_func, bc_func, k2=None, bc_type='dirichlet',
     max_iter : int, optional
         Maximum GMRES iterations (default: 10 * N)
     restart : int
-        GMRES restart parameter m
+        GMRES restart length r
     return_history : bool
         Whether to return convergence history
 

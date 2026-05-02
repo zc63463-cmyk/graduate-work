@@ -123,14 +123,67 @@ class TestNeumannPoissonCompatibility:
         y = np.linspace(0, 1, n)
         X, Y = np.meshgrid(x, y, indexing='ij')
         F_compat = np.cos(np.pi * X) * np.cos(np.pi * Y)
+        d_sx = _neumann_d_scale(n)
+        d_sy = _neumann_d_scale(n)
+        F_compat_adj = F_compat / d_sx[:, None] / d_sy[None, :]
 
-        is_compat, mean_f = check_neumann_compatibility(F_compat, h, 'N', 'N', 0.0)
+        is_compat, mean_f = check_neumann_compatibility(F_compat_adj, h, 'N', 'N', 0.0)
         assert is_compat, f"Compatible RHS flagged as incompatible: mean_f = {mean_f:.2e}"
 
         # Incompatible: f = 1
         F_incompat = np.ones((n, n))
-        is_compat2, mean_f2 = check_neumann_compatibility(F_incompat, h, 'N', 'N', 0.0)
+        F_incompat_adj = F_incompat / d_sx[:, None] / d_sy[None, :]
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            is_compat2, mean_f2 = check_neumann_compatibility(
+                F_incompat_adj, h, 'N', 'N', 0.0)
         assert not is_compat2, f"Incompatible RHS not detected: mean_f = {mean_f2:.2e}"
+        compat_warnings = [x for x in w if "compatibility" in str(x.message).lower()]
+        assert len(compat_warnings) > 0
+
+    def test_compatibility_uses_trapezoid_weights_for_scaled_rhs(self):
+        """Compatibility should follow DCT-I/trapezoid weights, not a plain sum."""
+        n = 5
+        h = 1.0 / (n - 1)
+        F = np.zeros((n, n))
+        F[0, 0] = 4.0
+        F[1, 1] = -1.0
+
+        wx = _trapezoid_weights(n)
+        wy = _trapezoid_weights(n)
+        trapezoid_integral = h * h * np.sum(wx[:, None] * wy[None, :] * F)
+        assert abs(trapezoid_integral) < 1e-14
+        assert abs(np.sum(F)) > 1.0  # A plain sum would give the wrong answer.
+
+        d_sx = _neumann_d_scale(n)
+        d_sy = _neumann_d_scale(n)
+        F_adj = F / d_sx[:, None] / d_sy[None, :]
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            is_compat, mean_f = check_neumann_compatibility(F_adj, h, 'N', 'N', 0.0)
+
+        compat_warnings = [x for x in w if "compatibility" in str(x.message).lower()]
+        assert is_compat, f"Trapezoid-compatible RHS flagged as incompatible: {mean_f:.2e}"
+        assert len(compat_warnings) == 0
+
+    def test_mixed_poisson_has_no_pure_neumann_compatibility_warning(self):
+        """A Dirichlet direction removes the constant nullspace at sigma=0."""
+        n = 17
+
+        def f_rhs(x, y):
+            return np.ones_like(x)
+
+        def bc(x, y):
+            return 0.0
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            U = fa_helmholtz(n, f_rhs, bc, sigma=0.0, bc_type=('N', 'D'))
+
+        compat_warnings = [x for x in w if "compatibility" in str(x.message).lower()]
+        assert len(compat_warnings) == 0
+        assert np.all(np.isfinite(U))
 
 
 class TestNeumannModifiedHelmholtz:

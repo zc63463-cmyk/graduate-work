@@ -197,7 +197,9 @@ FACR(l) 算法结合了 CR 和 FA 的优势。
 \subsection{FFT9 四阶紧致差分法}
 
 FFT9 方法将四阶紧致差分格式~\eqref{eq:compact-9pt}
-与 FFT 变换结合，在保持 $O(N^2 \log N)$ 计算量的同时达到 $O(h^4)$ 精度。
+与 FFT 变换结合，在保持 $O(N^2 \log N)$ 计算量的同时，
+使有效特征值在内点 Fourier symbol 意义下具有 $O(h^4)$ consistency。
+当前 Dirichlet 实现的整体四阶收敛由第~\ref{sec:experiments}章的 manufactured solution 实验验证。
 
 \subsubsection{广义特征值问题的数学框架}
 
@@ -214,7 +216,7 @@ FFT9 方法将四阶紧致差分格式~\eqref{eq:compact-9pt}
 \end{equation}
 对于 Poisson 方程（$\sigma = 0$），有效离散算子为 $-L_h/R_h$（$L_h \approx \Delta$），
 其特征值 $-\hat{\lambda}_L/\hat{\lambda}_R$ 逼近连续特征值 $\xi_p^2 + \eta_q^2$，
-逼近精度为 $O(h^4)$（定理~\ref{thm:4th_order}）。
+在内点 Fourier symbol 意义下逼近精度为 $O(h^4)$（定理~\ref{thm:4th_order}）。
 
 广义特征值问题的框架统一了五点格式和九点格式的频域分析：
 \begin{itemize}[itemsep=2pt]
@@ -260,27 +262,36 @@ $\hat{\Lambda}_R = \mathrm{diag}(\hat{\lambda}_R(p,q))$ 为对角矩阵，
   \hat{u}_{p,q} = \frac{\hat{\lambda}_R(p,q)\,\hat{f}_{p,q}}{-\hat{\lambda}_L(p,q) + \sigma\,\hat{\lambda}_R(p,q)}
   \label{eq:fft9_freq}
 \end{equation}
-其中 $\hat{f}_{p,q}$ 为 $R_h f$（含边界修正后的物理空间右端项 $\tilde{g}$）经 DST-I 变换后的频域表示。
+这里 $\hat{f}_{p,q}$ 表示原始右端项 $f$ 在理想齐次模态分析中的 DST-I 系数。
 原始频域除数为：
 \begin{equation}
   D_{p,q}^{\mathrm{raw}} = -\hat{\lambda}_L(p,q) + \sigma\,\hat{\lambda}_R(p,q)
   \label{eq:fft9_divisor}
 \end{equation}
 该形式直接对应离散系统 $(-L_h+\sigma R_h)\mathbf{u}=R_h\mathbf{f}$ 在频域的对角化，
-物理空间右端项 $R_h f$（含边界修正）经 DST-I 后记为 $\hat{\tilde{g}}$，
-则 $\hat{u}_{p,q} = \hat{\tilde{g}}_{p,q}/D_{p,q}^{\mathrm{raw}}$。
+也是本文实现使用的主形式。实际计算中先在物理空间构造
+\[
+\tilde{g}=(R_h f)_I+L_{IB}g_B-\sigma R_{IB}g_B,
+\]
+再作二维 DST-I 得到 $\hat{\tilde{g}}$，并使用
+\[
+\hat{u}_{p,q} = \frac{\hat{\tilde{g}}_{p,q}}{D_{p,q}^{\mathrm{raw}}}.
+\]
 
-等价地，若对原始右端项 $f$ 做 DST-I 得到 $\hat{f}$，
-则 $\hat{\tilde{g}}_{p,q}=\hat{\lambda}_R(p,q)\hat{f}_{p,q}$，代入可得有效除数形式：
+等价地，在齐次边界且直接以原始右端项频域系数 $\hat{f}$ 表示时，
+可将~\eqref{eq:fft9_freq}的分子分母同除以 $\hat{\lambda}_R(p,q)$，得到有效除数形式：
 \begin{equation}
   \hat{u}_{p,q} = \frac{\hat{f}_{p,q}}{-\hat{\lambda}_L(p,q)/\hat{\lambda}_R(p,q) + \sigma}
   \label{eq:fft9_freq_eff}
 \end{equation}
-两种形式在数学上等价。本文实现和算法描述统一采用原始除数 $D_{p,q}^{\mathrm{raw}}$，
-以避免非齐次 Dirichlet 边界修正中 $R_h$ 与有效除数形式之间的混淆。
+两种形式在相应右端项定义下数学等价。若右端项已经是 $R_h f$ 或包含边界修正的
+$\tilde{g}$，则必须配合原始除数 $D_{p,q}^{\mathrm{raw}}$，不能再除以有效除数，
+否则会引入额外的 $\hat{\lambda}_R$ 因子错配。
 
 由定理~\ref{thm:4th_order}，$D_{p,q}^{\mathrm{raw}}/\hat{\lambda}_R(p,q) = (\xi_p^2+\eta_q^2+\sigma) + O(h^4)$，
-因此频域求解的精度为 $O(h^4)$。
+这说明 FFT9 的有效频域分母在内点 Fourier symbol 层面具有四阶一致性。
+完整 Dirichlet 边值问题的整体四阶收敛还依赖边界修正与离散算子的稳定性，
+本文通过第~\ref{sec:experiments}章的光滑 manufactured solution 实验验证当前实现的该收敛行为。
 
 \begin{remark}
   对于 modified Helmholtz（$\sigma=+\kappa^2$），
@@ -294,18 +305,19 @@ $\hat{\Lambda}_R = \mathrm{diag}(\hat{\lambda}_R(p,q))$ 为对角矩阵，
 \subsubsection{$R_h$ 算子对右端项的处理}
 
 在标准五点格式中，右端项直接取 $f_{i,j}$；
-而在紧致格式中，右端项需经过 $R_h$ 修正：$g_{i,j} = R_h f_{i,j}$。
-
-对于齐次 Dirichlet 边界条件（$u|_{\partial\Omega} = 0$），
-$R_h f_{i,j}$ 仅涉及内节点值：
+而在紧致格式中，右端项需经过 $R_h$ 修正。对于远离边界的内点，
 \begin{equation}
-  g_{i,j} = \frac{1}{12}(f_{i-1,j}+f_{i+1,j}+f_{i,j-1}+f_{i,j+1}) + \frac{2}{3}f_{i,j}
+  (R_h f)_{i,j} =
+  \frac{1}{12}(f_{i-1,j}+f_{i+1,j}+f_{i,j-1}+f_{i,j+1}) + \frac{2}{3}f_{i,j}.
 \end{equation}
+对于靠近边界的内点，$R_h f$ 的模板可能涉及边界上的 $f$ 值；
+即使 $u|_{\partial\Omega}=0$，一般也不能推出 $f|_{\partial\Omega}=0$。
+因此实际实现中在物理空间构造完整修正右端项，而不是只对内点 $f$ 做频域缩放。
 
 对于非齐次 Dirichlet 边界条件（$u|_{\partial\Omega} = g_D$），
-$R_h$ 会将边界值传播到相邻内节点。
+$L_h$ 与 $\sigma R_h$ 作用于未知量时还会包含已知边界值。
 例如，若 $(i,1)$ 为邻边界内节点（$j=0$ 为边界），
-则 $R_h f_{i,1}$ 中的 $f_{i,0}$ 项需要用边界信息修正：
+则这些边界值需要通过物理空间移项并入修正右端项：
 
 \begin{remark}[物理空间边界修正策略]
   \label{rem:Rh_boundary_freq}
@@ -322,6 +334,25 @@ $R_h$ 会将边界值传播到相邻内节点。
   其中 $L_{IB}\,g_B$ 项来自 $L_h$ 中边界值贡献（移项后加号），
   $-\sigma R_{IB}\,g_B$ 项来自 $\sigma R_h$ 中边界值贡献（移项后减号）。
   该策略无需在频域引入 $\hat{\lambda}_R^{-1}$ 等额外除法运算，避免了推导风险。
+  本文当前代码实现采用与上述理论推导相同的 raw 符号系统：
+  先构造
+  $\tilde g=(R_h f)_I+L_{IB}g_B-\sigma R_{IB}g_B$，
+  再配合原始频域除数
+  $D_{p,q}^{\mathrm{raw}}=-\hat{\lambda}_L(p,q)+\sigma\hat{\lambda}_R(p,q)$。
+  若某个实现将整个线性系统乘以 $-1$，则必须同时使用
+  \[
+    \tilde g_{\mathrm{code}}
+    =
+    -(R_hf)_I-L_{IB}g_B+\sigma R_{IB}g_B,
+    \qquad
+    D_{p,q}^{\mathrm{code}}
+    =
+    \hat{\lambda}_L(p,q)-\sigma\hat{\lambda}_R(p,q)
+    =
+    -D_{p,q}^{\mathrm{raw}}.
+  \]
+  由于右端项和分母同时反号，反号系统与本文 raw 系统代数等价；
+  但两种符号系统不能混用，尤其不能只反右端项或只反频域分母。
 \end{remark}
 
 \begin{remark}[物理空间中的边界修正计算]
@@ -354,18 +385,19 @@ FFT9 方法与 FA/CR 方法在频域求解框架上具有相同的结构，
 \toprule
 性质 & FA/CR & FFT9 \\
 \midrule
-差分格式 & 五点（$O(h^2)$） & 九点紧致（$O(h^4)$） \\
+差分格式 & 五点（二阶） & 九点紧致（symbol 四阶） \\
 频域除数 & $(\mu_p+\mu_q)/h^2 + \sigma$ & $-\hat{\lambda}_L+\sigma\hat{\lambda}_R$ \\
 右端项变换 & $\hat{f} = \mathcal{F}f$ & $\hat{\tilde{g}} = \mathcal{F}(R_h f + \text{边界修正})$ \\
 计算量 & $O(N^2 \log N)$ & $O(N^2 \log N)$ \\
-精度 & $O(h^2)$ & $O(h^4)$ \\
+精度口径 & 整体二阶实验验证 & Dirichlet 整体四阶实验验证 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 两者的计算量相同（均为 2D DST-I 的 $O(N^2 \log N)$），
-但 FFT9 的频域除数更复杂（涉及 $\hat{\lambda}_L/\hat{\lambda}_R$ 的比值），
-且需要对右端项做 $R_h$ 修正（增加 $O(N^2)$ 的计算量，不改变渐近复杂度）。
+但 FFT9 的原始频域除数同时含有 $\hat{\lambda}_L$ 和 $\hat{\lambda}_R$；
+若写成有效分母形式，则等价表现为 $\hat{\lambda}_L/\hat{\lambda}_R$ 的比值。
+此外，FFT9 需要在物理空间构造 $R_h f$ 与边界修正项（增加 $O(N^2)$ 的计算量，不改变渐近复杂度）。
 
 \subsubsection{FFT9 算法}
 
@@ -373,7 +405,7 @@ FFT9 方法与 FA/CR 方法在频域求解框架上具有相同的结构，
 \caption{FFT9 四阶紧致差分法求解离散 Poisson/Helmholtz 方程（Dirichlet BC）}
 \begin{algorithmic}[1]
 \REQUIRE 网格大小 $n$，右端项 $f$，参数 $\sigma$
-\ENSURE 解 $u$（$O(h^4)$ 精度）
+\ENSURE 解 $u$（Dirichlet 光滑问题中呈现四阶收敛）
 \STATE 物理空间构造修正右端项：$\tilde{g} = (R_h f)_I + L_{IB}\,g_B - \sigma\,R_{IB}\,g_B$
 \STATE 2D DST-I 变换：$\hat{\tilde{g}} = \mathrm{DST2D}(\tilde{g})$
 \STATE 计算原始频域除数：$D_{p,q}^{\mathrm{raw}} = -\hat{\lambda}_L(p,q) + \sigma\,\hat{\lambda}_R(p,q)$
@@ -383,8 +415,17 @@ FFT9 方法与 FA/CR 方法在频域求解框架上具有相同的结构，
 \end{algorithmic}
 \end{algorithm}
 
+\begin{remark}[FFT9 实现中的符号系统]
+算法按理论系统 $(-L_h+\sigma R_h)u=R_hf$ 书写，本文当前代码也采用该 raw 符号系统。
+因此频域求解使用 $\hat{\tilde g}/D_{p,q}^{\mathrm{raw}}$，其中
+$\tilde g=(R_h f)_I+L_{IB}g_B-\sigma R_{IB}g_B$。
+整体乘以 $-1$ 的写法只是等价代数形式；若采用该形式，必须同步反号右端项与频域分母，
+不能只反其中一项。
+\end{remark}
+
 FFT9 方法的计算量与 FA 方法相同，为 $O(N^2 \log N)$，
-但精度为 $O(h^4)$，比 FA/CR 的 $O(h^2)$ 提高了两个数量级。
+但在本文验证的光滑 Dirichlet 问题上呈现四阶收敛，
+比 FA/CR 对应的五点二阶格式具有更高精度。
 具体而言，要达到相同的精度 $\epsilon$，
 五点格式需要 $h = O(\epsilon^{1/2})$ 即 $N = O(\epsilon^{-1/2})$，
 而九点格式仅需 $h = O(\epsilon^{1/4})$ 即 $N = O(\epsilon^{-1/4})$，
@@ -403,7 +444,7 @@ FFT9 方法的计算量与 FA 方法相同，为 $O(N^2 \log N)$，
 \centering
 \caption{各方法的理论复杂度比较}
 \label{tab:complexity}
-\begin{tabular}{lcccc}
+\begin{tabularx}{\textwidth}{l>{\raggedright\arraybackslash}Xccc}
 \toprule
 方法 & 复杂度 & 精度阶数 & 内存 & 边界条件 \\
 \midrule
@@ -411,16 +452,32 @@ FA    & $O(N^2 \log N)$    & $O(h^2)$ & $O(N^2)$ & D, N, 混合 \\
 CR    & $O(N^2 \log N)$    & $O(h^2)$ & $O(N^2)$ & D, N, 混合 \\
 FACR  & $O(N^2 \log N)$\textsuperscript{$\dagger$} & $O(h^2)$ & $O(N^2)$ & D, N, 混合 \\
 FFT9  & $O(N^2 \log N)$    & $O(h^4)$ & $O(N^2)$ & D\textrm{ 仅} \\
-GMRES & $O(m N^2)$         & $O(h^2)$ & $O(mN)$  & D, N \\
+GMRES($r$) & $O(krN^2)$（$r$ 固定时 $O(kN^2)$） & $O(h^2)$ & $O(rN^2)$  & D, N \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \vspace{0.5em}
 
 \noindent\textsuperscript{$\dagger$} FACR 的理论最优复杂度为 $O(N^2\log\log N)$，
 本文实际实现为 $O(N^2\log N)$（详见定理~\ref{thm:facr_complexity}的说明）。
 \end{table}
 
-其中 $m$ 为 GMRES 的总迭代次数。对于条件数为 $\kappa$ 的问题，
-GMRES 的迭代次数通常为 $m = O(\sqrt{\kappa}) = O(h^{-1})$，
-因此总复杂度为 $O(h^{-1} \cdot N^2) = O(N^{5/2})$，
-远高于 FFT 直接法的 $O(N^2 \log N)$。
+其中 $N$ 为单方向内点数，总未知量数为 $M=N^2$。
+对 restarted GMRES，本文用 $r$ 表示 restart length，用 $k$ 表示总 Arnoldi 迭代步数。
+五点稀疏矩阵的一次 matrix-vector product 需要 $O(M)=O(N^2)$ 成本；
+若只按 matvec 计，总代价为 $O(kN^2)$。
+若计入 Arnoldi 正交化，在每个 restart cycle 内需与至多 $r$ 个 Krylov 向量正交，
+总代价可记为
+\[
+  O(krN^2).
+\]
+需要存储的 Krylov basis 仅限当前 restart cycle，因此内存为
+\[
+  O(rN^2),
+\]
+而不是 $O(kN^2)$。
+本文实验中使用 GMRES(30)，即 $r=30$ 固定。
+因此在固定 restart length 的实验口径下，GMRES 成本可简写为 $O(kN^2)$，
+但常数依赖于 $r$。
+若再作启发式估计 $k=O(N)$，则 matvec-only 口径下为
+$O(N^3)=O(M^{3/2})$；计入正交化时为 $O(rN^3)$，固定 $r$ 后仍为同一阶。
+这一量级高于 FFT 直接法的 $O(N^2 \log N)$。
